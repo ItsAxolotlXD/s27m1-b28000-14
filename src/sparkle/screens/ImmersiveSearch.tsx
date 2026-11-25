@@ -18,6 +18,7 @@ import { Channel, NewsArticle } from "../types";
 import { searchEpgSchedule, EpgSearchResultItem } from "../services/epgService";
 import { SpinningRing } from "../components/SpinningRing";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { beginSparkleDrag, clearSparkleDrag } from "../utils/sparkleDrag";
 
 interface ImmersiveSearchProps {
   navigate: (path: string) => void;
@@ -307,6 +308,17 @@ export const ImmersiveSearch: React.FC<ImmersiveSearchProps> = ({
                         {matchedChannels.map((ch) => (
                           <div
                             key={ch.id}
+                            draggable
+                            onDragStart={(e) =>
+                              beginSparkleDrag(e, {
+                                kind: "channel",
+                                channelId: ch.id,
+                                slug: ch.slug,
+                                name: ch.shortName || ch.name,
+                                logo: ch.logo,
+                              })
+                            }
+                            onDragEnd={() => clearSparkleDrag()}
                             onClick={() => {
                               onSelectChannel(ch);
                               navigate(`/live-tv?channel=${ch.slug}`);
@@ -380,6 +392,17 @@ export const ImmersiveSearch: React.FC<ImmersiveSearchProps> = ({
                               return (
                                 <div
                                   key={`${item.channel.id}-${item.program.id}-${item.program.start}`}
+                                  draggable
+                                  onDragStart={(e) =>
+                                    beginSparkleDrag(e, {
+                                      kind: "channel",
+                                      channelId: item.channel.id,
+                                      slug: item.channel.slug,
+                                      name: item.channel.shortName || item.channel.name,
+                                      logo: item.channel.logo,
+                                    })
+                                  }
+                                  onDragEnd={() => clearSparkleDrag()}
                                   onClick={() => {
                                     onSelectChannel(item.channel);
                                     navigate(`/live-tv?channel=${item.channel.slug}`);
@@ -471,6 +494,17 @@ export const ImmersiveSearch: React.FC<ImmersiveSearchProps> = ({
                       {matchedNews.map((news) => (
                         <div
                           key={news.id}
+                          draggable
+                          onDragStart={(e) =>
+                            beginSparkleDrag(e, {
+                              kind: "app",
+                              id: `news-${news.id}`,
+                              label: news.title,
+                              route: `/news/${news.slug}`,
+                              startAppId: "app-feed",
+                            })
+                          }
+                          onDragEnd={() => clearSparkleDrag()}
                           onClick={() => navigate(`/news/${news.slug}`)}
                           className="group p-3.5 rounded-2xl bg-white dark:bg-[#200d23] hover:bg-black/5 dark:hover:bg-[#2e1233] border border-black/10 dark:border-[#3b1540] hover:border-[#E6005A]/60 flex gap-3.5 cursor-pointer transition-all shadow-md"
                         >

@@ -41,6 +41,7 @@ import {
 } from "../components/FlyoutDropdown";
 import { PromptDialog } from "../components/gallery/GalleryDialogs";
 import { WinUI3ColorPickerModal, type ColorTarget } from "../components/WinUI3ColorPickerModal";
+import { beginSparkleDrag, clearSparkleDrag } from "../utils/sparkleDrag";
 
 export interface UnsavedNoteHandler {
   isDirty: boolean;
@@ -633,81 +634,98 @@ export const NotesApp: React.FC<NotesAppProps> = ({
                   }}
                   className="rounded-2xl bg-[#f0f2f5] dark:bg-[#282b32] border border-black/10 dark:border-white/10 p-3.5 sm:p-4.5 flex flex-col justify-between shadow-xs transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0067b8] dark:focus-visible:ring-[#4cc2ff]"
                 >
-                  <div className="flex items-start justify-between mb-2.5">
-                    <div className="min-w-0 pr-2">
-                      <h4 className="text-sm sm:text-base font-semibold text-black dark:text-white truncate group-hover:text-[#0067b8] dark:group-hover:text-[#4cc2ff] transition-colors">
-                        {fileTitle}
-                      </h4>
-                      <p className="text-xs text-black/60 dark:text-[#9e9ea6] truncate">
-                        Tệp ghi chú · {formatNoteDate(note.updatedAt || note.createdAt)}
-                      </p>
-                    </div>
-                    {/* Notepad file icon + Pin indicator */}
-                    <div className="shrink-0 mt-0.5 flex items-center gap-1.5">
-                      {note.pinned && (
-                        <div
-                          className="w-4 h-4 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-xs"
-                          title="Đã ghim"
-                        >
-                          <Pin className="w-2.5 h-2.5 fill-current" />
+                  <div
+                    draggable
+                    onDragStart={(e) => {
+                      e.stopPropagation();
+                      beginSparkleDrag(e, {
+                        kind: "note",
+                        noteId: note.id,
+                        title: baseTitle,
+                        content: note.content,
+                        colorId: note.colorId,
+                        updatedAt: note.updatedAt,
+                      });
+                    }}
+                    onDragEnd={() => clearSparkleDrag()}
+                    className="flex flex-col justify-between flex-1"
+                  >
+                    <div className="flex items-start justify-between mb-2.5">
+                      <div className="min-w-0 pr-2">
+                        <h4 className="text-sm sm:text-base font-semibold text-black dark:text-white truncate group-hover:text-[#0067b8] dark:group-hover:text-[#4cc2ff] transition-colors">
+                          {fileTitle}
+                        </h4>
+                        <p className="text-xs text-black/60 dark:text-[#9e9ea6] truncate">
+                          Tệp ghi chú · {formatNoteDate(note.updatedAt || note.createdAt)}
+                        </p>
+                      </div>
+                      {/* Notepad file icon + Pin indicator */}
+                      <div className="shrink-0 mt-0.5 flex items-center gap-1.5">
+                        {note.pinned && (
+                          <div
+                            className="w-4 h-4 rounded-full bg-amber-400 text-black flex items-center justify-center shadow-xs"
+                            title="Đã ghim"
+                          >
+                            <Pin className="w-2.5 h-2.5 fill-current" />
+                          </div>
+                        )}
+                        <div className="size-4 sm:size-4.5 flex items-center justify-center">
+                          <img
+                            src={NOTE_ICON_URL}
+                            alt="Notepad"
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                            className="size-full object-contain filter drop-shadow-xs"
+                          />
                         </div>
-                      )}
-                      <div className="size-4 sm:size-4.5 flex items-center justify-center">
-                        <img
-                          src={NOTE_ICON_URL}
-                          alt="Notepad"
-                          referrerPolicy="no-referrer"
-                          loading="lazy"
-                          className="size-full object-contain filter drop-shadow-xs"
-                        />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Snapshot Thumbnail */}
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenThisNote();
-                    }}
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenThisNote();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
+                    {/* Snapshot Thumbnail */}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
                         e.stopPropagation();
                         handleOpenThisNote();
-                      }
-                    }}
-                    className="relative h-[88px] sm:h-[98px] rounded-2xl overflow-hidden shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer group/thumb focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0067b8] dark:focus-visible:ring-[#4cc2ff] bg-white dark:bg-[#1e2025] p-3 select-none flex items-center justify-center border-[2px] border-black/[0.06] dark:border-white/[0.08] group-hover:border-[#0067b8]/50 dark:group-hover:border-[#4cc2ff]/50"
-                  >
-                    <div className="flex items-center gap-3.5 z-10 w-full px-2">
-                      <div className="shrink-0 flex items-center justify-center bg-transparent">
-                        <img
-                          src={NOTE_ICON_URL}
-                          alt="Notepad"
-                          referrerPolicy="no-referrer"
-                          loading="lazy"
-                          className="size-10 sm:size-11 object-contain filter drop-shadow-sm group-hover/thumb:scale-105 transition-transform"
+                      }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenThisNote();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleOpenThisNote();
+                        }
+                      }}
+                      className="relative h-[88px] sm:h-[98px] rounded-2xl overflow-hidden shadow-xs transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer group/thumb focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0067b8] dark:focus-visible:ring-[#4cc2ff] bg-white dark:bg-[#1e2025] p-3 select-none flex items-center justify-center border-[2px] border-black/[0.06] dark:border-white/[0.08] group-hover:border-[#0067b8]/50 dark:group-hover:border-[#4cc2ff]/50"
+                    >
+                      <div className="flex items-center gap-3.5 z-10 w-full px-2">
+                        <div className="shrink-0 flex items-center justify-center bg-transparent">
+                          <img
+                            src={NOTE_ICON_URL}
+                            alt="Notepad"
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                            className="size-10 sm:size-11 object-contain filter drop-shadow-sm group-hover/thumb:scale-105 transition-transform"
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[12px] font-semibold text-black dark:text-[#f3f4f6] truncate group-hover/thumb:text-[#0067b8] dark:group-hover/thumb:text-[#4cc2ff] transition-colors">
+                            {note.title || "Ghi chú mới"}
+                          </div>
+                          <div className="text-[10px] text-black/50 dark:text-[#888892] truncate mt-0.5">
+                            {snippet.slice(0, 42) || "Ghi chú văn bản Sparkle Notes"}
+                          </div>
+                        </div>
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10 dark:border-white/20 ml-1.5"
+                          style={{ backgroundColor: colorOption.bg }}
+                          title={colorOption.name}
                         />
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[12px] font-semibold text-black dark:text-[#f3f4f6] truncate group-hover/thumb:text-[#0067b8] dark:group-hover/thumb:text-[#4cc2ff] transition-colors">
-                          {note.title || "Ghi chú mới"}
-                        </div>
-                        <div className="text-[10px] text-black/50 dark:text-[#888892] truncate mt-0.5">
-                          {snippet.slice(0, 42) || "Ghi chú văn bản Sparkle Notes"}
-                        </div>
-                      </div>
-                      <div
-                        className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10 dark:border-white/20 ml-1.5"
-                        style={{ backgroundColor: colorOption.bg }}
-                        title={colorOption.name}
-                      />
                     </div>
                   </div>
                 </motion.div>

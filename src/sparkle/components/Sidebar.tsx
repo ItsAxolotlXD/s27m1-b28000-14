@@ -99,6 +99,7 @@ import { Channel, NewsArticle } from "../types";
 import { DiscordWelcomeModal } from "./DiscordWelcomeModal";
 import { UnderConstructionModal } from "./UnderConstructionModal";
 import { parseM3UPlaylist, downloadPlaylistFile } from "../utils/m3uParser";
+import { beginSparkleDrag, clearSparkleDrag } from "../utils/sparkleDrag";
 
 const LOGO_SRC =
   "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-iTzEG0iuHLTKbWp5e2y55NABj3UWZr.png";
@@ -1569,6 +1570,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-home" : "sidebar-nav-home"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-home",
+                  label: "Home",
+                  route: "/",
+                  startAppId: "app-home",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/" || currentRoute === "/home" || currentRoute === "/home-preview"
                   ? "true"
@@ -1592,6 +1604,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-articles" : "sidebar-nav-articles"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-news",
+                  label: "Feed",
+                  route: "/news",
+                  startAppId: "app-feed",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/news" ||
                 currentRoute.startsWith("/article") ||
@@ -1631,6 +1654,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-live-tv" : "sidebar-nav-live-tv"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-live-tv",
+                  label: "Watch",
+                  route: "/live-tv",
+                  startAppId: "app-watch",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/live-tv" || currentRoute.startsWith("/live-tv")
                   ? "true"
@@ -1676,6 +1710,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <button
                     key={ch.id}
                     type="button"
+                    draggable
+                    onDragStart={(e) =>
+                      beginSparkleDrag(e, {
+                        kind: "channel",
+                        channelId: ch.id,
+                        slug: ch.slug,
+                        name: ch.name,
+                        logo: ch.logo,
+                      })
+                    }
+                    onDragEnd={() => clearSparkleDrag()}
                     onClick={() => {
                       handleNavClick(`/live-tv?channel=${ch.slug}`);
                       if (onSelectChannel) onSelectChannel(ch);
@@ -1706,6 +1751,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 id={isMobile ? "mobile-nav-gallery" : "sidebar-nav-gallery"}
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    id: "sidebar-gallery",
+                    label: "Gallery",
+                    route: "/gallery",
+                    startAppId: "app-gallery",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 data-nav-active={
                   currentRoute === "/gallery" || currentRoute.startsWith("/gallery")
                     ? "true"
@@ -1850,6 +1906,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               {/* Folder label (icon đơn sắc) */}
                               <button
                                 type="button"
+                                draggable
+                                onDragStart={(e) =>
+                                  beginSparkleDrag(e, {
+                                    kind: "app",
+                                    id: `gallery-folder-${folder.id}`,
+                                    label: folder.name,
+                                    route: "/gallery",
+                                    startAppId: "app-gallery",
+                                  })
+                                }
+                                onDragEnd={() => clearSparkleDrag()}
                                 onClick={() => {
                                   setSelectedSidebarFolderId(folder.id);
                                   try {
@@ -1887,6 +1954,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     <button
                                       key={item.id}
                                       type="button"
+                                      draggable
+                                      onDragStart={(e) =>
+                                        beginSparkleDrag(e, {
+                                          kind: "gallery-item",
+                                          itemId: item.id,
+                                          title: item.title,
+                                          mediaType: item.type,
+                                          thumbnailUrl: item.thumbnailUrl,
+                                          url: item.url,
+                                          size: item.size,
+                                          dateAdded: item.dateAdded,
+                                        })
+                                      }
+                                      onDragEnd={() => clearSparkleDrag()}
                                       onClick={() => {
                                         setSelectedSidebarFolderId(folder.id);
                                         try {
@@ -1949,6 +2030,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-draws" : "sidebar-nav-draws"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-draws",
+                  label: "Ink Canvas",
+                  route: "/draws",
+                  startAppId: "app-draws",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/draws" || currentRoute.startsWith("/draws") ? "true" : undefined
               }
@@ -1976,6 +2068,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-notes" : "sidebar-nav-notes"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-notes",
+                  label: "Notes",
+                  route: "/notes",
+                  startAppId: "app-notes",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/notes" ||
                 currentRoute === "/write" ||
@@ -2011,6 +2114,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-screenbox" : "sidebar-nav-screenbox"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-screenbox",
+                  label: "Screenbox",
+                  route: "/screenbox",
+                  startAppId: "app-screenbox",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/vlc" ||
                 currentRoute.startsWith("/vlc") ||
@@ -2050,6 +2164,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-camera" : "sidebar-nav-camera"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-camera",
+                  label: "Camera",
+                  route: "/camera",
+                  startAppId: "app-camera",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/camera" || currentRoute.startsWith("/camera")
                   ? "true"
@@ -2082,6 +2207,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-calculator" : "sidebar-nav-calculator"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-calculator",
+                  label: "Calculator",
+                  route: "/calculator",
+                  startAppId: "app-calculator",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/calculator" || currentRoute.startsWith("/calculator")
                   ? "true"
@@ -2111,6 +2247,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-weather" : "sidebar-nav-weather"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-weather",
+                  label: "Weather",
+                  route: "/weather",
+                  startAppId: "app-weather",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/weather" || currentRoute.startsWith("/weather")
                   ? "true"
@@ -2143,6 +2290,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-file-explorer" : "sidebar-nav-file-explorer"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-file-explorer",
+                  label: "File Explorer",
+                  route: "/file-explorer",
+                  startAppId: "app-file-explorer",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/file-explorer" || currentRoute.startsWith("/file-explorer")
                   ? "true"
@@ -2175,6 +2333,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-notepad" : "sidebar-nav-notepad"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-notepad",
+                  label: "Notepad",
+                  route: "/notepad",
+                  startAppId: "app-notepad",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/notepad" || currentRoute.startsWith("/notepad")
                   ? "true"
@@ -2207,6 +2376,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-html-writer" : "sidebar-nav-html-writer"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-html-writer",
+                  label: "HTML Writer",
+                  route: "/html-writer",
+                  startAppId: "app-html-writer",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/html-writer" || currentRoute.startsWith("/html-writer")
                   ? "true"
@@ -2239,6 +2419,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-winui-framework" : "sidebar-nav-winui-framework"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-winui-framework",
+                  label: "WinUI Framework",
+                  route: "/winui-framework",
+                  startAppId: "app-winui-framework",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/winui-framework" || currentRoute.startsWith("/winui-framework")
                   ? "true"
@@ -2271,6 +2462,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-registry-editor" : "sidebar-nav-registry-editor"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-registry-editor",
+                  label: "Registry Editor",
+                  route: "/registry-editor",
+                  startAppId: "app-registry-editor",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={
                 currentRoute === "/registry-editor" ||
                 currentRoute.startsWith("/registry-editor") ||
@@ -2315,6 +2517,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-craftmine" : "sidebar-nav-craftmine"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-craftmine",
+                  label: "Craftmine",
+                  route: "/craftmine",
+                  startAppId: "app-craftmine",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={currentRoute === "/craftmine" ? "true" : undefined}
               onClick={() => handleNavClick("/craftmine")}
               aria-label="Craftmine"
@@ -2338,6 +2551,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-photopea" : "sidebar-nav-photopea"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-photopea",
+                  label: "Photopea",
+                  route: "/photopea",
+                  startAppId: "app-photopea",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               data-nav-active={currentRoute === "/photopea" ? "true" : undefined}
               onClick={() => handleNavClick("/photopea")}
               aria-label="Photopea"
@@ -2361,6 +2585,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               id={isMobile ? "mobile-nav-discord" : "sidebar-nav-discord"}
+              draggable
+              onDragStart={(e) =>
+                beginSparkleDrag(e, {
+                  kind: "app",
+                  id: "sidebar-discord",
+                  label: "Discord",
+                  externalUrl: "https://discord.gg/wcdjaDDayK",
+                  startAppId: "app-discord",
+                })
+              }
+              onDragEnd={() => clearSparkleDrag()}
               onClick={() => {
                 if (isMobile) onCloseMobile?.();
                 window.open("https://discord.gg/wcdjaDDayK", "_blank", "noopener,noreferrer");
@@ -2394,6 +2629,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             id={isMobile ? "mobile-nav-winui-3" : "sidebar-nav-winui-3"}
+            draggable
+            onDragStart={(e) =>
+              beginSparkleDrag(e, {
+                kind: "app",
+                id: "sidebar-winui-3",
+                label: "WinUI 3",
+                route: "/winui-3",
+                startAppId: "app-winui-3",
+              })
+            }
+            onDragEnd={() => clearSparkleDrag()}
             data-nav-active={currentRoute === "/winui-3" ? "true" : undefined}
             onClick={() => handleNavClick("/winui-3")}
             aria-label="WinUI 3"
@@ -2416,6 +2662,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             id={isMobile ? "mobile-nav-feedback" : "sidebar-nav-feedback"}
+            draggable
+            onDragStart={(e) =>
+              beginSparkleDrag(e, {
+                kind: "app",
+                id: "sidebar-feedback",
+                label: "Feedback",
+                route: "/feedback",
+                startAppId: "app-feedback",
+              })
+            }
+            onDragEnd={() => clearSparkleDrag()}
             data-nav-active={isCurrentActive("/feedback") ? "true" : undefined}
             onClick={() => handleNavClick("/feedback")}
             aria-label="Feedback"
@@ -2439,6 +2696,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             id={isMobile ? "mobile-nav-pc-settings" : "sidebar-nav-pc-settings"}
+            draggable
+            onDragStart={(e) =>
+              beginSparkleDrag(e, {
+                kind: "app",
+                id: "sidebar-pc-settings",
+                label: "PC Settings",
+                route: "/pc-settings",
+                startAppId: "app-pc-settings",
+              })
+            }
+            onDragEnd={() => clearSparkleDrag()}
             data-nav-active={isCurrentActive("/pc-settings") ? "true" : undefined}
             onClick={() => handleNavClick("/pc-settings")}
             aria-label="PC Settings"
@@ -2466,6 +2734,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             id={isMobile ? "mobile-nav-settings" : "sidebar-nav-settings"}
+            draggable
+            onDragStart={(e) =>
+              beginSparkleDrag(e, {
+                kind: "app",
+                id: "sidebar-settings",
+                label: "Settings",
+                route: "/settings",
+                startAppId: "app-settings",
+              })
+            }
+            onDragEnd={() => clearSparkleDrag()}
             data-nav-active={isCurrentActive("/settings") ? "true" : undefined}
             onClick={() => handleNavClick("/settings")}
             aria-label="Settings"
@@ -2600,6 +2879,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-home"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-home",
+                      label: "Home",
+                      route: "/",
+                      startAppId: "app-home",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/" ||
                     currentRoute === "/home" ||
@@ -2626,6 +2916,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-articles"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-news",
+                      label: "Feed",
+                      route: "/news",
+                      startAppId: "app-feed",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/news" ||
                     currentRoute.startsWith("/article") ||
@@ -2659,6 +2960,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-watch"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-live-tv",
+                      label: "Watch",
+                      route: "/live-tv",
+                      startAppId: "app-watch",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/live-tv" || currentRoute.startsWith("/live-tv")
                       ? "true"
@@ -2685,6 +2997,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-gallery"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-gallery",
+                      label: "Gallery",
+                      route: "/gallery",
+                      startAppId: "app-gallery",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/gallery" || currentRoute.startsWith("/gallery")
                       ? "true"
@@ -2711,6 +3034,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-draws"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-draws",
+                      label: "Ink Canvas",
+                      route: "/draws",
+                      startAppId: "app-draws",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/draws" || currentRoute.startsWith("/draws")
                       ? "true"
@@ -2737,6 +3071,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-notes"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-notes",
+                      label: "Notes",
+                      route: "/notes",
+                      startAppId: "app-notes",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/notes" ||
                     currentRoute === "/write" ||
@@ -2769,6 +3114,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-screenbox"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-screenbox",
+                      label: "Screenbox",
+                      route: "/screenbox",
+                      startAppId: "app-screenbox",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/vlc" ||
                     currentRoute.startsWith("/vlc") ||
@@ -2805,6 +3161,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-camera"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-camera",
+                      label: "Camera",
+                      route: "/camera",
+                      startAppId: "app-camera",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/camera" || currentRoute.startsWith("/camera")
                       ? "true"
@@ -2831,6 +3198,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-calculator"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-calculator",
+                      label: "Calculator",
+                      route: "/calculator",
+                      startAppId: "app-calculator",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/calculator" || currentRoute.startsWith("/calculator")
                       ? "true"
@@ -2857,6 +3235,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-weather"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-weather",
+                      label: "Weather",
+                      route: "/weather",
+                      startAppId: "app-weather",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/weather" || currentRoute.startsWith("/weather")
                       ? "true"
@@ -2883,6 +3272,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-file-explorer"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-file-explorer",
+                      label: "File Explorer",
+                      route: "/file-explorer",
+                      startAppId: "app-file-explorer",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/file-explorer" || currentRoute.startsWith("/file-explorer")
                       ? "true"
@@ -2909,6 +3309,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-notepad"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-notepad",
+                      label: "Notepad",
+                      route: "/notepad",
+                      startAppId: "app-notepad",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/notepad" || currentRoute.startsWith("/notepad")
                       ? "true"
@@ -2935,6 +3346,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-html-writer"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-html-writer",
+                      label: "HTML Writer",
+                      route: "/html-writer",
+                      startAppId: "app-html-writer",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/html-writer" || currentRoute.startsWith("/html-writer")
                       ? "true"
@@ -2961,6 +3383,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-winui-framework"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-winui-framework",
+                      label: "WinUI Framework",
+                      route: "/winui-framework",
+                      startAppId: "app-winui-framework",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/winui-framework" ||
                     currentRoute.startsWith("/winui-framework")
@@ -2989,6 +3422,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-registry-editor"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-registry-editor",
+                      label: "Registry Editor",
+                      route: "/registry-editor",
+                      startAppId: "app-registry-editor",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={
                     currentRoute === "/registry-editor" ||
                     currentRoute.startsWith("/registry-editor") ||
@@ -3022,6 +3466,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-craftmine"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-craftmine",
+                      label: "Craftmine",
+                      route: "/craftmine",
+                      startAppId: "app-craftmine",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={currentRoute === "/craftmine" ? "true" : undefined}
                   onClick={() => handleNavClick("/craftmine")}
                   onMouseEnter={(e) => showTooltip("Craftmine", e)}
@@ -3044,6 +3499,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-photopea"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-photopea",
+                      label: "Photopea",
+                      route: "/photopea",
+                      startAppId: "app-photopea",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={currentRoute === "/photopea" ? "true" : undefined}
                   onClick={() => handleNavClick("/photopea")}
                   onMouseEnter={(e) => showTooltip("Photopea", e)}
@@ -3066,6 +3532,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-discord"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-discord",
+                      label: "Discord",
+                      externalUrl: "https://discord.gg/wcdjaDDayK",
+                      startAppId: "app-discord",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   onClick={() =>
                     window.open("https://discord.gg/wcdjaDDayK", "_blank", "noopener,noreferrer")
                   }
@@ -3098,6 +3575,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-winui-3"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-winui-3",
+                      label: "WinUI 3",
+                      route: "/winui-3",
+                      startAppId: "app-winui-3",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   onClick={() => handleNavClick("/winui-3")}
                   onMouseEnter={(e) => showTooltip("WinUI 3", e)}
                   onMouseLeave={hideTooltip}
@@ -3119,6 +3607,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-feedback"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-feedback",
+                      label: "Feedback",
+                      route: "/feedback",
+                      startAppId: "app-feedback",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={isCurrentActive("/feedback") ? "true" : undefined}
                   onClick={() => handleNavClick("/feedback")}
                   onMouseEnter={(e) => showTooltip("Feedback", e)}
@@ -3143,6 +3642,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-pc-settings"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-pc-settings",
+                      label: "PC Settings",
+                      route: "/pc-settings",
+                      startAppId: "app-pc-settings",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={isCurrentActive("/pc-settings") ? "true" : undefined}
                   onClick={() => handleNavClick("/pc-settings")}
                   onMouseEnter={(e) => showTooltip("PC Settings", e)}
@@ -3171,6 +3681,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   type="button"
                   id="sidebar-collapsed-settings"
+                  draggable
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "app",
+                      id: "sidebar-settings",
+                      label: "Settings",
+                      route: "/settings",
+                      startAppId: "app-settings",
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   data-nav-active={isCurrentActive("/settings") ? "true" : undefined}
                   onClick={() => handleNavClick("/settings")}
                   onMouseEnter={(e) => showTooltip("Settings", e)}

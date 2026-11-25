@@ -70,9 +70,19 @@ import { showAppToast } from "../utils/toast";
 import { useSettings } from "../hooks/useSettings";
 import { useNotes } from "../context/NotesContext";
 import { galleryDB, GalleryMediaItem, getMediaDimensions } from "../services/galleryStorage";
+import {
+  beginSparkleDrag,
+  clearSparkleDrag,
+  hasExternalDeviceFiles,
+  parseSparkleDrag,
+  type SparkleDragExplorerPayload,
+} from "../utils/sparkleDrag";
+import { importDeviceFilesToFolder } from "../utils/deviceFileImport";
+import { addSparkleDragToDesktop } from "../services/desktopStore";
 
 interface FileExplorerProps {
   navigate?: (route: string, state?: any) => void;
+  routeState?: any;
 }
 
 export type ExplorerItemKind =
@@ -1813,13 +1823,49 @@ const ExplorerTabContextMenu: React.FC<{
   );
 };
 
-export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
+export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate, routeState }) => {
   const { settings } = useSettings();
   const { notes, setActiveNoteId, createNote } = useNotes();
   const { titleBarSlotEl, isInsideWindowFrame } = useContext(WindowTitleBarPortalContext);
   const isLight = settings.theme === "light";
   const accentColor = isLight ? "#0063B8" : "#4CC2FF";
   const accentForeground = isLight ? "#ffffff" : "#000000";
+
+  const [isCanvasDropActive, setIsCanvasDropActive] = useState(false);
+
+  const toExplorerDragPayload = useCallback(
+    (entry: ExplorerEntry): SparkleDragExplorerPayload => ({
+      kind: "explorer-entry",
+      entry: {
+        id: entry.id,
+        parentId: entry.parentId,
+        name: entry.name,
+        explorerKind: entry.kind,
+        sizeBytes: entry.sizeBytes,
+        modifiedAt: entry.modifiedAt,
+        locationLabel: entry.locationLabel,
+        pathLabel: entry.pathLabel,
+        status: entry.status,
+        thumbnailUrl: entry.thumbnailUrl,
+        mediaUrl: entry.mediaUrl,
+        mimeType: entry.mimeType,
+        fileExtension: entry.fileExtension,
+        isBinary: entry.isBinary,
+        dimensions: entry.dimensions,
+        textContent: entry.textContent,
+        targetRoute: entry.targetRoute,
+        targetRouteState: entry.targetRouteState,
+        linkedSource: entry.linkedSource,
+        linkedId: entry.linkedId,
+        driveLetter: entry.driveLetter,
+        driveUsedGb: entry.driveUsedGb,
+        driveTotalGb: entry.driveTotalGb,
+        targetDirId: entry.targetDirId,
+        isImportedFromDevice: entry.isImportedFromDevice,
+      },
+    }),
+    [],
+  );
 
   const [fePrefs, setFePrefs] = useState<ExplorerPreferences>(() => loadExplorerPrefs());
   const updateFePrefs = useCallback(
@@ -1997,6 +2043,28 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
     }
   }, [loadHtmlWriterFiles, needsGallerySource, needsHtmlSource]);
 
+  const handledRouteTokenRef = useRef<unknown>(null);
+  useEffect(() => {
+    if (!routeState || typeof routeState !== "object") return;
+    const token = routeState._t ?? routeState.initialDirId ?? routeState.selectEntryId;
+    if (!token || handledRouteTokenRef.current === token) return;
+    handledRouteTokenRef.current = token;
+    if (typeof routeState.initialDirId === "string" && routeState.initialDirId) {
+      const targetDir = routeState.initialDirId;
+      setTabs((prev) =>
+        prev.map((t) => {
+          if (t.id !== activeTabId) return t;
+          if (t.history[t.historyIndex] === targetDir) return t;
+          const sliced = t.history.slice(0, t.historyIndex + 1);
+          return { ...t, history: [...sliced, targetDir], historyIndex: sliced.length };
+        }),
+      );
+    }
+    if (typeof routeState.selectEntryId === "string" && routeState.selectEntryId) {
+      setSelectedId(routeState.selectEntryId);
+    }
+  }, [routeState, activeTabId]);
+
   useEffect(() => {
     if (needsGallerySource && galleryDirtyRef.current) {
       galleryDB
@@ -2050,6 +2118,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) setCustomEntries(parsed);
         }
+        const hiddenRaw = localStorage.getItem(HIDDEN_SYSTEM_IDS_KEY);
+        if (hiddenRaw) {
+          const parsedHidden = JSON.parse(hiddenRaw);
+          if (Array.isArray(parsedHidden)) setHiddenSystemIds(parsedHidden);
+        }
       } catch {}
     };
     window.addEventListener("storage", onStorage);
@@ -2070,6 +2143,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
     try {
       localStorage.setItem(CUSTOM_FS_STORAGE_KEY, JSON.stringify(next));
     } catch {}
+    window.dispatchEvent(new CustomEvent("sparkle:desktop-updated"));
   }, []);
 
   const persistFavorites = useCallback((next: string[]) => {
@@ -2084,6 +2158,7 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
     try {
       localStorage.setItem(HIDDEN_SYSTEM_IDS_KEY, JSON.stringify(next));
     } catch {}
+    window.dispatchEvent(new CustomEvent("sparkle:desktop-updated"));
   }, []);
 
   const homeDrives: ExplorerEntry[] = useMemo(
@@ -3306,7 +3381,18 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
                 <button
                   key={item.id}
                   type="button"
+                  draggable
                   data-nav-active={isActive ? "true" : undefined}
+                  onDragStart={(e) =>
+                    beginSparkleDrag(e, {
+                      kind: "directory",
+                      dirId: item.id,
+                      name: item.name,
+                      pathLabel: getDirMeta(item.id).pathLabel,
+                      iconKind: item.iconKind,
+                    })
+                  }
+                  onDragEnd={() => clearSparkleDrag()}
                   onClick={() => navigateToDir(item.id)}
                   className={`sidebar-nav-item w-full h-[32px] px-2.5 rounded-[6px] flex items-center gap-2.5 text-[12.5px] relative transition-colors cursor-pointer border-none text-left ${
                     isActive
@@ -4000,14 +4086,132 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
 
         {/* Center Content Canvas */}
         <div
+          data-fe-drop-zone="true"
+          onDragOver={(e) => {
+            if (isSettingsView) return;
+            if (hasExternalDeviceFiles(e.dataTransfer)) {
+              e.preventDefault();
+              e.stopPropagation();
+              e.dataTransfer.dropEffect = "copy";
+              setIsCanvasDropActive(true);
+              return;
+            }
+            const internal = parseSparkleDrag(e.dataTransfer);
+            if (internal && internal.kind === "explorer-entry") {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+              setIsCanvasDropActive(true);
+            }
+          }}
+          onDragLeave={(e) => {
+            if (
+              e.currentTarget === e.target ||
+              !e.currentTarget.contains(e.relatedTarget as Node)
+            ) {
+              setIsCanvasDropActive(false);
+            }
+          }}
+          onDrop={async (e) => {
+            if (isSettingsView) return;
+            setIsCanvasDropActive(false);
+            if (
+              hasExternalDeviceFiles(e.dataTransfer) &&
+              e.dataTransfer.files &&
+              e.dataTransfer.files.length > 0
+            ) {
+              e.preventDefault();
+              e.stopPropagation();
+              const files = Array.from(e.dataTransfer.files);
+              clearSparkleDrag();
+              const isOverviewDir =
+                currentDirId === "dir-home" ||
+                currentDirId === "dir-this-pc" ||
+                currentDirId === "dir-gallery" ||
+                currentDirId === "dir-network" ||
+                currentDirId === "dir-settings";
+              const targetParent = isOverviewDir ? "dir-downloads" : currentDirId;
+              const parentMeta = getDirMeta(targetParent);
+              try {
+                const res = await importDeviceFilesToFolder(files, {
+                  targetDirId: targetParent,
+                  targetDirName: parentMeta.name,
+                  targetDirPath: parentMeta.pathLabel,
+                  allowGalleryOnlyForDefaultMediaDir: true,
+                  alsoIndexMediaInGallery: targetParent !== "dir-desktop",
+                });
+                if (res.firstSelectedId) setSelectedId(res.firstSelectedId);
+                showAppToast(
+                  res.count === 1
+                    ? `Imported "${res.names[0]}" to ${parentMeta.name}`
+                    : `Imported ${res.count} files to ${parentMeta.name}`,
+                  { appName: "File Explorer" },
+                );
+              } catch {
+                showAppToast("Could not import dropped files", { appName: "File Explorer" });
+              }
+              return;
+            }
+
+            const payload = parseSparkleDrag(e.dataTransfer);
+            clearSparkleDrag();
+            if (payload && payload.kind === "explorer-entry") {
+              e.preventDefault();
+              e.stopPropagation();
+              const isOverviewDir =
+                currentDirId === "dir-home" ||
+                currentDirId === "dir-this-pc" ||
+                currentDirId === "dir-gallery" ||
+                currentDirId === "dir-network" ||
+                currentDirId === "dir-settings";
+              const targetParent = isOverviewDir ? "dir-downloads" : currentDirId;
+              if (payload.entry.parentId === targetParent) return;
+              const parentMeta = getDirMeta(targetParent);
+              const copyId = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+              const copyEntry: ExplorerEntry = {
+                id: copyId,
+                parentId: targetParent,
+                name: payload.entry.name,
+                kind: payload.entry.explorerKind as ExplorerItemKind,
+                sizeBytes: payload.entry.sizeBytes,
+                modifiedAt: Date.now(),
+                locationLabel: parentMeta.name,
+                pathLabel: `${parentMeta.pathLabel}\\${payload.entry.name}`,
+                status: "local",
+                linkedSource: "custom",
+                thumbnailUrl: payload.entry.thumbnailUrl,
+                mediaUrl: payload.entry.mediaUrl,
+                mimeType: payload.entry.mimeType,
+                fileExtension: payload.entry.fileExtension,
+                isBinary: payload.entry.isBinary,
+                dimensions: payload.entry.dimensions,
+                textContent: payload.entry.textContent,
+                targetRoute: payload.entry.targetRoute,
+                targetRouteState: payload.entry.targetRouteState,
+                isImportedFromDevice: payload.entry.isImportedFromDevice,
+              };
+              persistCustomEntries([copyEntry, ...customEntries]);
+              setSelectedId(copyId);
+              showAppToast(`Copied "${copyEntry.name}" to ${parentMeta.name}`, {
+                appName: "File Explorer",
+              });
+            }
+          }}
           onContextMenu={(e) => {
             if (isSettingsView) return;
             if ((e.target as HTMLElement).closest("[data-fe-row]")) return;
             e.preventDefault();
             setContextMenu({ x: e.clientX, y: e.clientY, entry: null });
           }}
-          className="flex-1 min-w-0 m-2 mr-1.5 rounded-[8px] bg-white/85 dark:bg-[#22262e]/85 overflow-y-auto overflow-x-hidden sidebar-scroller p-4 sm:p-5 space-y-5"
+          className={`relative flex-1 min-w-0 m-2 mr-1.5 rounded-[8px] bg-white/85 dark:bg-[#22262e]/85 overflow-y-auto overflow-x-hidden sidebar-scroller p-4 sm:p-5 space-y-5 transition-all ${
+            isCanvasDropActive ? "ring-2 ring-[#0078d4] dark:ring-[#4cc2ff]" : ""
+          }`}
         >
+          {isCanvasDropActive && !isSettingsView && (
+            <div className="pointer-events-none sticky top-2 z-30 mx-auto w-fit px-3.5 py-2 rounded-[8px] bg-[#0078d4] text-white shadow-lg flex items-center gap-2 text-[12px] font-medium">
+              <Upload className="w-3.5 h-3.5" />
+              <span>Drop to import into {currentDirMeta.name}</span>
+            </div>
+          )}
           {/* FILE EXPLORER SETTINGS PAGE (Matching Widget Board Settings Tab layout) */}
           {isSettingsView ? (
             <motion.div
@@ -4341,6 +4545,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
                             <div
                               key={item.id}
                               data-fe-row="true"
+                              draggable
+                              onDragStart={(e) => beginSparkleDrag(e, toExplorerDragPayload(item))}
+                              onDragEnd={() => clearSparkleDrag()}
                               onClick={() => setSelectedId(item.id)}
                               onDoubleClick={() => openEntry(item)}
                               onContextMenu={(e) => {
@@ -4410,6 +4617,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
                             <div
                               key={drv.id}
                               data-fe-row="true"
+                              draggable
+                              onDragStart={(e) => beginSparkleDrag(e, toExplorerDragPayload(drv))}
+                              onDragEnd={() => clearSparkleDrag()}
                               onClick={() => setSelectedId(drv.id)}
                               onDoubleClick={() => openEntry(drv)}
                               className={`p-3 rounded-[8px] flex items-center gap-3 cursor-pointer transition-colors ${
@@ -4488,6 +4698,16 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
                           <button
                             key={f.id}
                             type="button"
+                            draggable
+                            onDragStart={(e) =>
+                              beginSparkleDrag(e, {
+                                kind: "directory",
+                                dirId: f.id,
+                                name: f.name,
+                                pathLabel: getDirMeta(f.id).pathLabel,
+                              })
+                            }
+                            onDragEnd={() => clearSparkleDrag()}
                             onClick={() => navigateToDir(f.id)}
                             className="p-2.5 rounded-[8px] border border-black/[0.06] dark:border-white/[0.07] bg-black/[0.02] dark:bg-white/[0.03] hover:bg-black/[0.05] dark:hover:bg-white/[0.07] flex items-center gap-3 text-left cursor-pointer"
                           >
@@ -4522,6 +4742,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
                           return (
                             <div
                               key={drv.id}
+                              draggable
+                              onDragStart={(e) => beginSparkleDrag(e, toExplorerDragPayload(drv))}
+                              onDragEnd={() => clearSparkleDrag()}
                               onClick={() => setSelectedId(drv.id)}
                               onDoubleClick={() => openEntry(drv)}
                               className={`p-3 rounded-[8px] flex items-center gap-3 cursor-pointer transition-colors ${
@@ -4619,6 +4842,9 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
                             <div
                               key={item.id}
                               data-fe-row="true"
+                              draggable
+                              onDragStart={(e) => beginSparkleDrag(e, toExplorerDragPayload(item))}
+                              onDragEnd={() => clearSparkleDrag()}
                               onClick={() => {
                                 setSelectedId(item.id);
                                 if (!fePrefs.doubleClickToOpen) openEntry(item);
@@ -4712,6 +4938,11 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
                               <div
                                 key={item.id}
                                 data-fe-row="true"
+                                draggable
+                                onDragStart={(e) =>
+                                  beginSparkleDrag(e, toExplorerDragPayload(item))
+                                }
+                                onDragEnd={() => clearSparkleDrag()}
                                 onClick={() => {
                                   setSelectedId(item.id);
                                   if (!fePrefs.doubleClickToOpen) openEntry(item);
@@ -5135,6 +5366,24 @@ export const FileExplorer: React.FC<FileExplorerProps> = ({ navigate }) => {
                             ? "Unpin from Favorites"
                             : "Pin to Favorites"}
                         </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = contextMenu.entry!;
+                          setContextMenu(null);
+                          const res = addSparkleDragToDesktop(toExplorerDragPayload(target));
+                          showAppToast(
+                            res.alreadyExisted
+                              ? `"${res.name}" is already on Desktop`
+                              : `Sent "${res.name}" to Desktop`,
+                            { appName: "File Explorer" },
+                          );
+                        }}
+                        className="w-full h-[30px] px-2.5 rounded-[5px] flex items-center gap-2.5 text-[12.5px] hover:bg-black/[0.06] dark:hover:bg-white/[0.08] border-none bg-transparent cursor-pointer text-left"
+                      >
+                        <Monitor className="w-3.5 h-3.5" />
+                        <span>Send to Desktop</span>
                       </button>
                       <div className="my-1 h-[1px] bg-black/10 dark:bg-white/10" />
                       {contextMenu.entry.kind !== "drive" && (

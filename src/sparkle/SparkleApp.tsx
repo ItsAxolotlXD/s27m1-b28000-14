@@ -116,6 +116,13 @@ import { WindowsTaskbar } from "./components/WindowsTaskbar";
 import { WindowsContextMenu } from "./components/WindowsContextMenu";
 import { WindowsLockScreen } from "./components/WindowsLockScreen";
 import { DirectCommandFlyout } from "./components/DirectCommandFlyout";
+import { DesktopWorkspace } from "./components/DesktopWorkspace";
+import {
+  createDesktopFolderOnFS,
+  createDesktopTextFileOnFS,
+  importDeviceFilesToFolder,
+} from "./utils/deviceFileImport";
+import { clearSparkleDrag, hasExternalDeviceFiles, useSparkleDragState } from "./utils/sparkleDrag";
 import {
   Plus,
   RefreshCw,
@@ -128,6 +135,8 @@ import {
   Brush,
   Code2,
   AppWindow,
+  FolderPlus,
+  Upload,
 } from "lucide-react";
 
 export function getRouteTitle(route: string, channel?: Channel): string {
@@ -684,6 +693,7 @@ export default function App() {
   };
 
   const [mobileDragOffset, setMobileDragOffset] = useState<number | null>(null);
+  const globalDragState = useSparkleDragState();
 
   // Edge swipe gesture: vuốt từ cạnh trái sang để mở sidebar - follow finger trong thời gian thực
   useEffect(() => {
@@ -1925,7 +1935,7 @@ export default function App() {
       }
 
       case "/file-explorer":
-        return <FileExplorer navigate={activeNav} />;
+        return <FileExplorer navigate={activeNav} routeState={activeState} />;
 
       case "/calculator":
         return <Calculator navigate={activeNav} />;
@@ -2004,6 +2014,44 @@ export default function App() {
         <div
           data-immersive-sidebar={settings.immersiveSidebar}
           data-sidebar-position={settings.sidebarPosition}
+          onDragOver={(e) => {
+            if (hasExternalDeviceFiles(e.dataTransfer)) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+            }
+          }}
+          onDrop={async (e) => {
+            if (
+              hasExternalDeviceFiles(e.dataTransfer) &&
+              e.dataTransfer.files &&
+              e.dataTransfer.files.length > 0
+            ) {
+              e.preventDefault();
+              const files = Array.from(e.dataTransfer.files);
+              clearSparkleDrag();
+              const targetDirId = isWindowsMode ? "dir-desktop" : "dir-imported";
+              const targetDirName = isWindowsMode ? "Desktop" : "Imported from device";
+              const targetDirPath = isWindowsMode
+                ? "C:\\Users\\Sparkle\\Desktop"
+                : "C:\\Users\\Sparkle\\Imported";
+              try {
+                const res = await importDeviceFilesToFolder(files, {
+                  targetDirId,
+                  targetDirName,
+                  targetDirPath,
+                  alsoIndexMediaInGallery: true,
+                });
+                showAppToast(
+                  res.count === 1
+                    ? `Imported "${res.names[0]}" to ${targetDirName}`
+                    : `Imported ${res.count} files to ${targetDirName}`,
+                  { appName: "SparkleOS" },
+                );
+              } catch {
+                showAppToast("Failed to import dropped files", { appName: "SparkleOS" });
+              }
+            }
+          }}
           className={`min-h-screen ${
             isWindowsMode
               ? "bg-transparent"
@@ -2161,6 +2209,18 @@ export default function App() {
               >
                 {/* Desktop-only Insider Evaluation Watermark (always visible in SparkleOS Mode, behind all windows & UIs) */}
                 {isSplashFinished && <EvaluationWatermark isTaskbarFloating={isTaskbarFloating} />}
+                {isSplashFinished && (
+                  <DesktopWorkspace
+                    viewSize={desktopViewSize}
+                    sortBy={desktopSortBy}
+                    hasVisibleWindows={tabs.some(
+                      (t) => windowStates[t.id] && !windowStates[t.id]?.isMinimized,
+                    )}
+                    channels={channels}
+                    onSelectChannel={setCurrentChannel}
+                    onLaunchRoute={openOrFocusAppWindow}
+                  />
+                )}
                 <AnimatePresence>
                   {tabs.map((tab) => {
                     const ws = windowStates[tab.id];
@@ -2544,6 +2604,29 @@ export default function App() {
                         icon: <Plus className="w-4 h-4" />,
                         submenu: [
                           {
+                            id: "desk-new-folder",
+                            label: "Folder",
+                            icon: <FolderPlus className="w-4 h-4" />,
+                            onSelect: () => {
+                              const entry = createDesktopFolderOnFS("New folder");
+                              showAppToast(`Created "${entry.name}" on Desktop`, {
+                                appName: "Desktop",
+                              });
+                            },
+                          },
+                          {
+                            id: "desk-new-text-file",
+                            label: "Text Document (.txt)",
+                            icon: <FileText className="w-4 h-4" />,
+                            onSelect: () => {
+                              const entry = createDesktopTextFileOnFS("New Text Document.txt");
+                              showAppToast(`Created "${entry.name}" on Desktop`, {
+                                appName: "Desktop",
+                              });
+                            },
+                          },
+                          { id: "desk-new-div", divider: true },
+                          {
                             id: "desk-new-window",
                             label: "New window",
                             icon: <AppWindow className="w-4 h-4" />,
@@ -2551,7 +2634,7 @@ export default function App() {
                           },
                           {
                             id: "desk-new-note",
-                            label: "Text Document (Notes)",
+                            label: "Quick Note (Notes)",
                             icon: <FileText className="w-4 h-4" />,
                             onSelect: () => openNewAppWindow("/notes"),
                           },
@@ -2563,7 +2646,7 @@ export default function App() {
                           },
                           {
                             id: "desk-new-notepad",
-                            label: "Text Document (Notepad)",
+                            label: "Notepad Document",
                             icon: <FileText className="w-4 h-4" />,
                             onSelect: () => openNewAppWindow("/notepad"),
                           },
@@ -2744,6 +2827,16 @@ export default function App() {
 
           {/* Global Application Toast Notifications */}
           <GlobalToast />
+
+          {/* External device file drag indicator in non-Windows Mode */}
+          {!isWindowsMode && globalDragState.hasExternalFiles && (
+            <div className="pointer-events-none fixed bottom-6 right-6 z-[2147483000] px-4 py-2.5 rounded-[10px] bg-white/95 dark:bg-[#20242c]/95 border border-[#0078d4] shadow-2xl backdrop-blur-xl flex items-center gap-2.5 text-[#111827] dark:text-white">
+              <Upload className="w-4 h-4 text-[#0078d4] dark:text-[#4cc2ff]" />
+              <span className="text-[12.5px] font-medium">
+                Drop files anywhere to import into SparkleOS
+              </span>
+            </div>
+          )}
 
           {/* Update Sparkle Splash Screen (1 minute: 60s) */}
           {isUpdating && (

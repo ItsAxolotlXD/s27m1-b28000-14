@@ -44,6 +44,7 @@ import { flyoutPanelClassName, flyoutPanelStyle } from "./FlyoutDropdown";
 import { NEWS_DATA } from "../data/news";
 import { parseM3UPlaylist, downloadPlaylistFile } from "../utils/m3uParser";
 import { exportArticleToDocx } from "../utils/docxExport";
+import { beginSparkleDrag, clearSparkleDrag } from "../utils/sparkleDrag";
 
 interface ToolsMenuProps {
   currentRoute: string;
@@ -741,6 +742,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-gallery"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-gallery",
+                    title: "Gallery",
+                    route: "/gallery",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/gallery");
@@ -761,6 +772,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-draws"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-draws",
+                    title: "Ink Canvas",
+                    route: "/draws",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/draws");
@@ -781,6 +802,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-notes"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-notes",
+                    title: "Notes",
+                    route: "/notes",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/notes");
@@ -801,6 +832,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-screenbox"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-screenbox",
+                    title: "Screenbox",
+                    route: "/screenbox",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/screenbox");
@@ -821,6 +862,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-camera"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-camera",
+                    title: "Camera",
+                    route: "/camera",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/camera");
@@ -841,6 +892,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-photopea"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-photopea",
+                    title: "Photopea",
+                    route: "/photopea",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/photopea");
@@ -861,6 +922,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-file-explorer"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-file-explorer",
+                    title: "File Explorer",
+                    route: "/file-explorer",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/file-explorer");
@@ -881,6 +952,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-notepad"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-notepad",
+                    title: "Notepad",
+                    route: "/notepad",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/notepad");
@@ -901,6 +982,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-html-writer"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-html-writer",
+                    title: "HTML Writer",
+                    route: "/html-writer",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/html-writer");
@@ -921,6 +1012,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-winui-framework"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-winui-framework",
+                    title: "WinUI Framework",
+                    route: "/winui-framework",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/winui-framework");
@@ -941,6 +1042,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-pc-settings"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-pc-settings",
+                    title: "PC Settings",
+                    route: "/pc-settings",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/pc-settings");
@@ -961,6 +1072,16 @@ export const ToolsMenu: React.FC<ToolsMenuProps> = ({
               <button
                 id="tool-registry-editor"
                 type="button"
+                draggable
+                onDragStart={(e) =>
+                  beginSparkleDrag(e, {
+                    kind: "app",
+                    appId: "app-registry-editor",
+                    title: "Registry Editor",
+                    route: "/registry-editor",
+                  })
+                }
+                onDragEnd={() => clearSparkleDrag()}
                 onClick={() => {
                   setIsOpen(false);
                   onNavigate("/registry-editor");

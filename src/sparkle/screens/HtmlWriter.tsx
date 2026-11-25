@@ -42,6 +42,7 @@ import {
 import { modalDialogVariants, modalBackdropVariants } from "../utils/animations";
 import { showAppToast } from "../utils/toast";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { beginSparkleDrag, clearSparkleDrag } from "../utils/sparkleDrag";
 
 interface HtmlDocumentItem {
   id: string;
@@ -1182,6 +1183,17 @@ export const HtmlWriter: React.FC = () => {
                       return (
                         <div
                           key={file.id}
+                          draggable
+                          onDragStart={(e) =>
+                            beginSparkleDrag(e, {
+                              kind: "html-file",
+                              fileId: file.id,
+                              title: file.name,
+                              content: file.content,
+                              updatedAt: file.updatedAt,
+                            })
+                          }
+                          onDragEnd={() => clearSparkleDrag()}
                           className={`group flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-[5px] text-[12.5px] cursor-pointer transition-colors ${
                             isCurrent
                               ? "bg-[#0067b8]/12 dark:bg-[#4cc2ff]/15 text-[#0067b8] dark:text-[#4cc2ff] font-medium"

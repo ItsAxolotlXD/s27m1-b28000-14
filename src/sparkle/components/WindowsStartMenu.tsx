@@ -68,6 +68,9 @@ import {
 } from "../services/installedWinUIAppsStore";
 import { InstalledWinUIAppBadge } from "./InstalledWinUIAppBadge";
 import { Channel } from "../types";
+import { beginSparkleDrag, clearSparkleDrag, type SparkleDragPayload } from "../utils/sparkleDrag";
+import { addSparkleDragToDesktop } from "../services/desktopStore";
+import { showAppToast } from "../utils/toast";
 
 export interface StartMenuAppItem {
   id: string;
@@ -332,6 +335,33 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
     return map;
   }, [pinnedApps]);
 
+  const toAppDragPayload = (app: StartMenuAppItem): SparkleDragPayload => {
+    const customApp = app.id.startsWith("winui-custom-")
+      ? installedWinUIApps.find((c) => installedWinUIStartAppId(c.id) === app.id)
+      : undefined;
+    return {
+      kind: "app",
+      id: app.id,
+      label: app.label,
+      route: app.route,
+      externalUrl: app.externalUrl,
+      startAppId: app.id,
+      iconKey: customApp?.iconKey,
+      accentColor: customApp?.accentColor,
+    };
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleDesktopDrop = () => {
+      onClose();
+    };
+    window.addEventListener("sparkle:desktop-drop-complete", handleDesktopDrop);
+    return () => {
+      window.removeEventListener("sparkle:desktop-drop-complete", handleDesktopDrop);
+    };
+  }, [isOpen, onClose]);
+
   const pinnedEntries = useMemo(
     () => reconcileStartLayout(savedLayout, startPinnedApps),
     [savedLayout, startPinnedApps],
@@ -511,6 +541,7 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
       title: string;
       subtitle: string;
       icon: React.ReactNode;
+      dragPayload: SparkleDragPayload;
       onClick: () => void;
     }> = [];
 
@@ -522,6 +553,12 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
           title: latestNote.title.trim() || "Untitled Note",
           subtitle: "Recent note",
           icon: <Fluent3DNotesIcon className="w-6 h-6 shrink-0" />,
+          dragPayload: {
+            kind: "note",
+            noteId: latestNote.id,
+            title: latestNote.title.trim() || "Untitled Note",
+            updatedAt: latestNote.updatedAt,
+          },
           onClick: () => {
             setActiveNoteId(latestNote.id);
             onLaunchRoute("/notes");
@@ -546,6 +583,14 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
         ) : (
           <Fluent3DWatchPreviewIcon className="w-6 h-6 shrink-0" />
         ),
+        dragPayload: {
+          kind: "channel",
+          channelId: ch.id,
+          name: ch.name,
+          slug: ch.slug,
+          logo: ch.logo,
+          category: ch.category,
+        },
         onClick: () => {
           onSelectChannel(ch);
           onLaunchRoute(`/live-tv?channel=${ch.slug}`);
@@ -560,6 +605,13 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
         title: art.title.replace(/^#\s*/, ""),
         subtitle: art.publishedAt || "Update blog",
         icon: <Fluent3DArticlesIcon className="w-6 h-6 shrink-0" />,
+        dragPayload: {
+          kind: "app",
+          id: `art-${art.id}`,
+          label: art.title.replace(/^#\s*/, ""),
+          route: `/news/${art.slug}`,
+          startAppId: "app-feed",
+        },
         onClick: () => {
           onLaunchRoute(`/news/${art.slug}`);
           onClose();
@@ -1028,6 +1080,9 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                             <button
                               key={item.id}
                               type="button"
+                              draggable
+                              onDragStart={(e) => beginSparkleDrag(e, item.dragPayload)}
+                              onDragEnd={() => clearSparkleDrag()}
                               onClick={item.onClick}
                               className="h-[48px] px-2.5 rounded-[6px] flex items-center gap-3 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors cursor-pointer text-left border-none"
                             >
@@ -1065,6 +1120,9 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                                 )}
                                 <button
                                   type="button"
+                                  draggable
+                                  onDragStart={(e) => beginSparkleDrag(e, toAppDragPayload(app))}
+                                  onDragEnd={() => clearSparkleDrag()}
                                   onClick={() => handleLaunchApp(app)}
                                   onContextMenu={(e) => openAppContextMenu(e, app)}
                                   className="w-full h-[38px] px-3 rounded-[6px] flex items-center gap-3.5 hover:bg-black/[0.05] dark:hover:bg-white/[0.08] active:scale-[0.99] transition-all cursor-pointer text-left border-none"
@@ -1088,6 +1146,9 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                             <button
                               key={app.id}
                               type="button"
+                              draggable
+                              onDragStart={(e) => beginSparkleDrag(e, toAppDragPayload(app))}
+                              onDragEnd={() => clearSparkleDrag()}
                               onClick={() => handleLaunchApp(app)}
                               onContextMenu={(e) => openAppContextMenu(e, app)}
                               className="group py-2.5 px-1.5 rounded-[6px] flex flex-col items-center justify-center gap-1.5 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:scale-95 transition-all cursor-pointer border-none"
@@ -1133,9 +1194,19 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                                     }
                                   }}
                                   onDragStart={(e) => {
-                                    e.dataTransfer.effectAllowed = "move";
+                                    e.dataTransfer.effectAllowed = "copyMove";
                                     e.dataTransfer.setData("text/plain", entryKey);
                                     setDragState({ kind: "pinned", entryKey });
+                                    beginSparkleDrag(
+                                      e,
+                                      {
+                                        kind: "start-folder",
+                                        folderId: entry.id,
+                                        name: entry.name,
+                                        appIds: entry.appIds,
+                                      },
+                                      { preserveTextPlain: true, effectAllowed: "copyMove" },
+                                    );
                                   }}
                                   onDragOver={(e) => {
                                     if (!dragState || dragState.kind !== "pinned") return;
@@ -1177,6 +1248,7 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                                   onDragEnd={() => {
                                     setDragState(null);
                                     setDropTarget(null);
+                                    clearSparkleDrag();
                                   }}
                                   className={`relative group py-2.5 px-1.5 rounded-[6px] flex flex-col items-center justify-center gap-1.5 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:scale-95 transition-all cursor-pointer select-none ${
                                     isDragged ? "opacity-40 scale-95" : ""
@@ -1235,9 +1307,13 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                                   }
                                 }}
                                 onDragStart={(e) => {
-                                  e.dataTransfer.effectAllowed = "move";
+                                  e.dataTransfer.effectAllowed = "copyMove";
                                   e.dataTransfer.setData("text/plain", entryKey);
                                   setDragState({ kind: "pinned", entryKey });
+                                  beginSparkleDrag(e, toAppDragPayload(app), {
+                                    preserveTextPlain: true,
+                                    effectAllowed: "copyMove",
+                                  });
                                 }}
                                 onDragOver={(e) => {
                                   if (!dragState || dragState.kind !== "pinned") return;
@@ -1279,6 +1355,7 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                                 onDragEnd={() => {
                                   setDragState(null);
                                   setDropTarget(null);
+                                  clearSparkleDrag();
                                 }}
                                 className={`relative group py-2.5 px-1.5 rounded-[6px] flex flex-col items-center justify-center gap-1.5 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:scale-95 transition-all cursor-pointer select-none ${
                                   isDragged ? "opacity-40 scale-95" : ""
@@ -1323,6 +1400,18 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                               <button
                                 key={ch.id}
                                 type="button"
+                                draggable
+                                onDragStart={(e) =>
+                                  beginSparkleDrag(e, {
+                                    kind: "channel",
+                                    channelId: ch.id,
+                                    name: ch.name,
+                                    slug: ch.slug,
+                                    logo: ch.logo,
+                                    category: ch.category,
+                                  })
+                                }
+                                onDragEnd={() => clearSparkleDrag()}
                                 onClick={() => {
                                   onSelectChannel(ch);
                                   onLaunchRoute(`/live-tv?channel=${ch.slug}`);
@@ -1386,6 +1475,9 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                               <button
                                 key={item.id}
                                 type="button"
+                                draggable
+                                onDragStart={(e) => beginSparkleDrag(e, item.dragPayload)}
+                                onDragEnd={() => clearSparkleDrag()}
                                 onClick={item.onClick}
                                 className="h-[48px] px-2.5 rounded-[6px] flex items-center gap-3 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors cursor-pointer text-left border-none"
                               >
@@ -1695,12 +1787,16 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                                 }}
                                 onDragStart={(e) => {
                                   e.stopPropagation();
-                                  e.dataTransfer.effectAllowed = "move";
+                                  e.dataTransfer.effectAllowed = "copyMove";
                                   e.dataTransfer.setData("text/plain", fa.id);
                                   setDragState({
                                     kind: "folder-app",
                                     folderId: openFolder.id,
                                     appId: fa.id,
+                                  });
+                                  beginSparkleDrag(e, toAppDragPayload(fa), {
+                                    preserveTextPlain: true,
+                                    effectAllowed: "copyMove",
                                   });
                                 }}
                                 onDragOver={(e) => {
@@ -1741,6 +1837,7 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                                 onDragEnd={() => {
                                   setDragState(null);
                                   setFolderAppDropTarget(null);
+                                  clearSparkleDrag();
                                 }}
                                 className={`relative group py-2 px-1 rounded-[6px] flex flex-col items-center justify-center gap-1.5 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] cursor-pointer select-none ${
                                   isAppDragged ? "opacity-40" : ""
@@ -1807,6 +1904,20 @@ export const WindowsStartMenu: React.FC<WindowsStartMenuProps> = ({
                     icon: isOnStart ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />,
                     onSelect: () =>
                       isOnStart ? pinActions.unpinFromStart(app.id) : pinActions.pinToStart(app.id),
+                  },
+                  {
+                    id: "start-app-send-desktop",
+                    label: "Send to Desktop",
+                    icon: <Monitor className="w-4 h-4" />,
+                    onSelect: () => {
+                      const res = addSparkleDragToDesktop(toAppDragPayload(app));
+                      showAppToast(
+                        res.alreadyExisted
+                          ? `"${res.name}" is already on Desktop`
+                          : `Added "${res.name}" to Desktop`,
+                        { appName: "Start" },
+                      );
+                    },
                   },
                   ...(app.route
                     ? [

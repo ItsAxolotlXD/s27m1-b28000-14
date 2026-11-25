@@ -32,12 +32,15 @@ import { loadWidgetsPrefs } from "./WindowsWidgetsBoard";
 import { START_APP_ICONS } from "./StartAppIcons";
 import { FluentHomeIcon } from "./FluentIcons";
 import type { PcSettingCategoryId, StartForYouItem } from "../utils/startForYouSuggestions";
+import { beginSparkleDrag, clearSparkleDrag, type SparkleDragPayload } from "../utils/sparkleDrag";
 
 export type StartConceptTab = "for-you" | "pinned" | "all" | "recents";
 
 export interface StartConceptAppItem {
   id: string;
   label: string;
+  route?: string | undefined;
+  externalUrl?: string | undefined;
   renderIcon: (sizeClass?: string) => React.ReactNode;
 }
 
@@ -317,10 +320,91 @@ export const StartForYouGrid: React.FC<{ items: StartForYouItem[] }> = ({ items 
         );
       };
 
+      const forYouPayload: SparkleDragPayload = (() => {
+        if (item.kind === "app") {
+          return {
+            kind: "app",
+            id: item.id,
+            label: item.title,
+            startAppId: item.appId,
+          };
+        }
+        if (item.kind === "channel") {
+          return {
+            kind: "channel",
+            channelId: item.id.replace(/^fy-ch-/, ""),
+            name: item.title,
+            slug: item.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+            logo: item.imageUrl,
+          };
+        }
+        if (item.kind === "note") {
+          return {
+            kind: "note",
+            noteId: item.id.replace(/^fy-note-/, ""),
+            title: item.title,
+          };
+        }
+        if (item.kind === "folder") {
+          return {
+            kind: "directory",
+            dirId: "dir-gallery",
+            name: item.title,
+          };
+        }
+        if (item.kind === "setting") {
+          return {
+            kind: "setting",
+            id: item.id,
+            label: item.title,
+            route: item.settingCategory ? `/pc-settings/${item.settingCategory}` : "/pc-settings",
+            category: item.settingCategory,
+          };
+        }
+        if (item.kind === "html") {
+          return {
+            kind: "html-file",
+            fileId: item.id,
+            name: item.title,
+            content: item.htmlSnippet || "",
+          };
+        }
+        if (item.kind === "gallery") {
+          return {
+            kind: "gallery-item",
+            itemId: item.id.replace(/^fy-gal-/, ""),
+            title: item.title,
+            mediaType: "image",
+            thumbnailUrl: item.imageUrl,
+            url: item.imageUrl,
+          };
+        }
+        return {
+          kind: "app",
+          id: item.id,
+          label: item.title,
+          startAppId:
+            item.kind === "screenbox"
+              ? "app-screenbox"
+              : item.kind === "article"
+                ? "app-feed"
+                : "app-file-explorer",
+          route:
+            item.kind === "screenbox"
+              ? "/screenbox"
+              : item.kind === "article"
+                ? "/news"
+                : "/file-explorer",
+        };
+      })();
+
       return (
         <button
           key={item.id}
           type="button"
+          draggable
+          onDragStart={(e) => beginSparkleDrag(e, forYouPayload)}
+          onDragEnd={() => clearSparkleDrag()}
           onClick={item.onSelect}
           className="group p-1 rounded-[8px] flex flex-col text-left !border-0 !outline-none shadow-none !bg-transparent hover:!bg-black/[0.05] dark:hover:!bg-white/[0.07] active:scale-[0.98] transition-all cursor-pointer min-w-0"
         >
@@ -458,6 +542,18 @@ const SuggestedAppsCard: React.FC<{
         <button
           key={app.id}
           type="button"
+          draggable
+          onDragStart={(e) =>
+            beginSparkleDrag(e, {
+              kind: "app",
+              id: app.id,
+              label: app.label,
+              route: app.route,
+              externalUrl: app.externalUrl,
+              startAppId: app.id,
+            })
+          }
+          onDragEnd={() => clearSparkleDrag()}
           onClick={() => onLaunchApp(app)}
           className="group py-2 px-1 rounded-[6px] flex flex-col items-center justify-center gap-1.5 hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:scale-95 transition-all cursor-pointer !border-0 !outline-none shadow-none bg-transparent"
         >
@@ -490,12 +586,37 @@ export const StartConceptWidgets: React.FC<{
 export const StartConceptFooterShortcuts: React.FC<{ onOpenRoute: (route: string) => void }> = ({
   onOpenRoute,
 }) => {
-  const items: Array<{ label: string; route: string; icon: React.ReactNode }> = [
-    { label: "Documents", route: "/file-explorer", icon: <FileText className="w-4 h-4" /> },
-    { label: "Downloads", route: "/file-explorer", icon: <Download className="w-4 h-4" /> },
-    { label: "Music", route: "/file-explorer", icon: <Music className="w-4 h-4" /> },
-    { label: "Pictures", route: "/gallery", icon: <ImageIcon className="w-4 h-4" /> },
-    { label: "File Explorer", route: "/file-explorer", icon: <FolderOpen className="w-4 h-4" /> },
+  const items: Array<{ label: string; route: string; dirId: string; icon: React.ReactNode }> = [
+    {
+      label: "Documents",
+      route: "/file-explorer",
+      dirId: "dir-documents",
+      icon: <FileText className="w-4 h-4" />,
+    },
+    {
+      label: "Downloads",
+      route: "/file-explorer",
+      dirId: "dir-downloads",
+      icon: <Download className="w-4 h-4" />,
+    },
+    {
+      label: "Music",
+      route: "/file-explorer",
+      dirId: "dir-music",
+      icon: <Music className="w-4 h-4" />,
+    },
+    {
+      label: "Pictures",
+      route: "/gallery",
+      dirId: "dir-pictures",
+      icon: <ImageIcon className="w-4 h-4" />,
+    },
+    {
+      label: "File Explorer",
+      route: "/file-explorer",
+      dirId: "dir-home",
+      icon: <FolderOpen className="w-4 h-4" />,
+    },
   ];
   return (
     <>
@@ -503,8 +624,17 @@ export const StartConceptFooterShortcuts: React.FC<{ onOpenRoute: (route: string
         <button
           key={item.label}
           type="button"
+          draggable
           aria-label={item.label}
           title={item.label}
+          onDragStart={(e) =>
+            beginSparkleDrag(e, {
+              kind: "directory",
+              dirId: item.dirId,
+              name: item.label,
+            })
+          }
+          onDragEnd={() => clearSparkleDrag()}
           onClick={() => onOpenRoute(item.route)}
           className="w-9 h-9 rounded-[6px] flex items-center justify-center hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors cursor-pointer !border-0 !outline-none bg-transparent"
         >

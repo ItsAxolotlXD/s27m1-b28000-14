@@ -62,6 +62,12 @@ import { Channel, NewsArticle } from "../types";
 import { NEWS_DATA } from "../data/news";
 import { galleryDB, GalleryMediaItem } from "../services/galleryStorage";
 import { showAppToast } from "../utils/toast";
+import { beginSparkleDrag, clearSparkleDrag, type SparkleDragPayload } from "../utils/sparkleDrag";
+import { readCustomFsEntries, type SharedExplorerEntry } from "../utils/deviceFileImport";
+import {
+  installedWinUIStartAppId,
+  useInstalledWinUIApps,
+} from "../services/installedWinUIAppsStore";
 
 function stripHtml(html: string): string {
   return (html || "")
@@ -115,6 +121,8 @@ interface SearchAspectItem {
     onAction: () => void;
   };
   externalUrl?: string;
+  startAppId?: string;
+  dragPayload?: SparkleDragPayload;
   onSelect: () => void;
 }
 
@@ -192,7 +200,24 @@ export const TopBar: React.FC<TopBarProps> = ({
   const [showAllResults, setShowAllResults] = useState(false);
   const [isTabSearchExpanded, setIsTabSearchExpanded] = useState(false);
   const [galleryItems, setGalleryItems] = useState<GalleryMediaItem[]>([]);
+  const [explorerCustomEntries, setExplorerCustomEntries] = useState<SharedExplorerEntry[]>(() =>
+    readCustomFsEntries(),
+  );
+  const installedWinUIApps = useInstalledWinUIApps();
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const syncFs = () => setExplorerCustomEntries(readCustomFsEntries());
+    const closeOnDesktopDrop = () => setIsSearchFlyoutOpen(false);
+    window.addEventListener("sparkle:file-explorer-fs-updated", syncFs);
+    window.addEventListener("storage", syncFs);
+    window.addEventListener("sparkle:desktop-drop-complete", closeOnDesktopDrop);
+    return () => {
+      window.removeEventListener("sparkle:file-explorer-fs-updated", syncFs);
+      window.removeEventListener("storage", syncFs);
+      window.removeEventListener("sparkle:desktop-drop-complete", closeOnDesktopDrop);
+    };
+  }, []);
   const [resultTitleTooltip, setResultTitleTooltip] = useState<{
     text: string;
     top: number;
@@ -573,6 +598,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "trang chủ home overview",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-home", title: "Home", route: "/" },
         onSelect: () => navigate("/"),
       },
       {
@@ -581,6 +607,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "live tv xem truyền hình trực tuyến watch",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-watch", title: "Watch", route: "/live-tv" },
         onSelect: () => navigate("/live-tv"),
       },
       {
@@ -589,6 +616,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "tin tức bài viết news articles feed update blogs changelog cập nhật",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-feed", title: "Feed", route: "/news" },
         onSelect: () => navigate("/news"),
       },
       {
@@ -597,6 +625,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "danh sách kênh channels channel directory",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-channels", title: "Channels", route: "/channels" },
         onSelect: () => navigate("/channels"),
       },
       {
@@ -605,6 +634,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "kênh yêu thích favorites favs",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-favorites",
+          title: "Favorites",
+          route: "/favorites",
+        },
         onSelect: () => navigate("/favorites"),
       },
       {
@@ -613,6 +648,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "minecraft preview web game",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-craftmine",
+          title: "Craftmine",
+          route: "/craftmine",
+        },
         onSelect: () => navigate("/craftmine"),
       },
       {
@@ -621,6 +662,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "photopea photoshop chỉnh sửa ảnh biên tập ảnh psd photo editor web app",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-photopea", title: "Photopea", route: "/photopea" },
         onSelect: () => navigate("/photopea"),
       },
       {
@@ -629,6 +671,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "gallery bộ sưu tập ảnh video âm thanh phương tiện media photos",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-gallery", title: "Gallery", route: "/gallery" },
         onSelect: () => navigate("/gallery"),
       },
       {
@@ -637,6 +680,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "ink canvas draws paint vẽ hội họa bút cọ sketch ms paint canvas",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-draws", title: "Ink Canvas", route: "/draws" },
         onSelect: () => navigate("/draws"),
       },
       {
@@ -645,6 +689,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "ghi chú soạn thảo notes office",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-notes", title: "Notes", route: "/notes" },
         onSelect: () => navigate("/notes"),
       },
       {
@@ -654,6 +699,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         keywords:
           "screenbox screenbug vlc media player phát video âm thanh stream disc network equalizer open url",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-screenbox",
+          title: "Screenbox",
+          route: "/screenbox",
+        },
         onSelect: () => navigate("/screenbox"),
       },
       {
@@ -662,6 +713,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "camera máy ảnh chụp ảnh camera rolls webcam snapshot photo insider",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-camera", title: "Camera", route: "/camera" },
         onSelect: () => navigate("/camera"),
       },
       {
@@ -670,6 +722,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "calculator calc máy tính standard scientific math tính toán",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-calculator",
+          title: "Calculator",
+          route: "/calculator",
+        },
         onSelect: () => navigate("/calculator"),
       },
       {
@@ -678,6 +736,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "weather forecast thời tiết dự báo nhiệt độ mưa gió fluentweather",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-weather", title: "Weather", route: "/weather" },
         onSelect: () => navigate("/weather"),
       },
       {
@@ -687,6 +746,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         keywords:
           "file explorer files folders drives documents downloads pictures explorer tep tin thu muc",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-file-explorer",
+          title: "File Explorer",
+          route: "/file-explorer",
+        },
         onSelect: () => navigate("/file-explorer"),
       },
       {
@@ -695,6 +760,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "notepad text editor markdown plain text ghi chu winui 3",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-notepad", title: "Notepad", route: "/notepad" },
         onSelect: () => navigate("/notepad"),
       },
       {
@@ -703,6 +769,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "html writer code editor css js preview winui 3 lập trình web chạy thử html",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-html-writer",
+          title: "HTML Writer",
+          route: "/html-writer",
+        },
         onSelect: () => navigate("/html-writer"),
       },
       {
@@ -711,6 +783,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "winui framework sdk studio write build app xaml fluent navigationview",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-winui-framework",
+          title: "WinUI Framework",
+          route: "/winui-framework",
+        },
         onSelect: () => navigate("/winui-framework"),
       },
       {
@@ -719,6 +797,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "registry editor regedit windows hkey hkcu hklm winui 3 he thong",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-registry-editor",
+          title: "Registry Editor",
+          route: "/registry-editor",
+        },
         onSelect: () => navigate("/registry-editor"),
       },
       {
@@ -727,6 +811,12 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "pc settings windows 11 system bluetooth network personalization windows update",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-pc-settings",
+          title: "PC Settings",
+          route: "/pc-settings",
+        },
         onSelect: () => navigate("/pc-settings"),
       },
       {
@@ -735,6 +825,7 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: "Switch page",
         keywords: "cài đặt hệ thống settings preferences",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-settings", title: "Settings", route: "/settings" },
         onSelect: () => navigate("/settings"),
       },
       // All Interactive System Settings & Action Toggles (Search & execute right on Search UI)
@@ -1199,6 +1290,64 @@ export const TopBar: React.FC<TopBarProps> = ({
       },
     ];
 
+    (installedWinUIApps || []).forEach((wApp) => {
+      const appId = installedWinUIStartAppId(wApp.id);
+      aspects.push({
+        id: `winui-app-${wApp.id}`,
+        title: wApp.name,
+        subtitle: "Open",
+        startAppId: appId,
+        keywords: `winui app custom ${wApp.description || ""}`,
+        type: "page",
+        dragPayload: {
+          kind: "app",
+          appId,
+          title: wApp.name,
+          route: wApp.route,
+          iconKey: wApp.iconKey,
+          accentColor: wApp.accentColor,
+        },
+        onSelect: () => navigate(wApp.route),
+      });
+    });
+
+    [
+      { id: "dir-desktop", title: "Desktop", keywords: "desktop folder" },
+      { id: "dir-documents", title: "Documents", keywords: "documents folder" },
+      { id: "dir-downloads", title: "Downloads", keywords: "downloads folder" },
+      { id: "dir-pictures", title: "Pictures", keywords: "pictures folder" },
+      { id: "dir-music", title: "Music", keywords: "music folder" },
+      { id: "dir-videos", title: "Videos", keywords: "videos folder" },
+      { id: "dir-imported", title: "Imported from device", keywords: "imported device folder" },
+    ].forEach((dir) => {
+      aspects.push({
+        id: `explorer-${dir.id}`,
+        title: dir.title,
+        subtitle: "File Explorer Folder",
+        keywords: `folder explorer ${dir.keywords}`,
+        type: "page",
+        dragPayload: {
+          kind: "directory",
+          dirId: dir.id,
+          title: dir.title,
+          route: "/file-explorer",
+        },
+        onSelect: () => navigate("/file-explorer"),
+      });
+    });
+
+    (explorerCustomEntries || []).forEach((entry) => {
+      aspects.push({
+        id: `fs-entry-${entry.id}`,
+        title: entry.name,
+        subtitle: entry.type === "folder" ? "File Explorer Folder" : "File",
+        keywords: `file folder explorer ${entry.ext || ""} ${entry.name}`,
+        type: "page",
+        dragPayload: { kind: "explorer-entry", entry },
+        onSelect: () => navigate("/file-explorer"),
+      });
+    });
+
     // Channels
     (channels || []).forEach((ch) => {
       aspects.push({
@@ -1208,6 +1357,13 @@ export const TopBar: React.FC<TopBarProps> = ({
         keywords: `${ch.category} ${ch.shortName || ""} ${ch.slug}`,
         type: "channel",
         logo: ch.logo,
+        dragPayload: {
+          kind: "channel",
+          channelId: ch.id,
+          slug: ch.slug,
+          title: ch.shortName || ch.name,
+          logo: ch.logo,
+        },
         onSelect: () => {
           if (onSelectChannel) onSelectChannel(ch);
           navigate(`/live-tv?channel=${ch.slug}`);
@@ -1236,6 +1392,14 @@ export const TopBar: React.FC<TopBarProps> = ({
         subtitle: `Note • ${formatRelativeTime(note.updatedAt)}`,
         keywords: `note notes ghi chú notion apple notes ${plainText}`,
         type: "note",
+        dragPayload: {
+          kind: "note",
+          noteId: note.id,
+          title: note.title.trim() || "Ghi chú không có tiêu đề",
+          content: note.content,
+          colorId: note.colorId,
+          updatedAt: note.updatedAt,
+        },
         customAction: {
           label: "Mở",
           onAction: () => {
@@ -1269,6 +1433,17 @@ export const TopBar: React.FC<TopBarProps> = ({
         keywords: `gallery ${media.type} ${media.tags ? media.tags.join(" ") : ""} ${media.description || ""}`,
         type: "gallery",
         logo: media.thumbnailUrl || (media.type === "image" ? media.url : undefined),
+        dragPayload: {
+          kind: "gallery-item",
+          itemId: media.id,
+          title: media.title,
+          mediaType: media.type,
+          url: media.url,
+          thumbnailUrl: media.thumbnailUrl,
+          size: media.size,
+          mimeType: media.mimeType,
+          createdAt: media.createdAt,
+        },
         customAction: {
           label: "Xem",
           onAction: () => {
@@ -1300,6 +1475,8 @@ export const TopBar: React.FC<TopBarProps> = ({
     notes,
     galleryItems,
     setActiveNoteId,
+    installedWinUIApps,
+    explorerCustomEntries,
   ]);
 
   // Trending searches: shown initially when opening search UI or when recent searches are cleared
@@ -1470,6 +1647,17 @@ export const TopBar: React.FC<TopBarProps> = ({
           keywords: `gallery ${gItem.type} ${gItem.tags?.join(" ") || ""} ${gItem.description || ""}`,
           type: "tool",
           logo: gItem.type === "image" ? gItem.thumbnailUrl || gItem.url : undefined,
+          dragPayload: {
+            kind: "gallery-item",
+            itemId: gItem.id,
+            title: gItem.title,
+            mediaType: gItem.type,
+            url: gItem.url,
+            thumbnailUrl: gItem.thumbnailUrl,
+            size: gItem.size,
+            mimeType: gItem.mimeType,
+            createdAt: gItem.createdAt,
+          },
           onSelect: () => {
             navigate("/gallery");
             if (onTabSearchChange) {
@@ -1493,6 +1681,14 @@ export const TopBar: React.FC<TopBarProps> = ({
           keywords: `notes ghi chú ${plainText.slice(0, 100)}`,
           type: "note",
           timestamp: note.updatedAt,
+          dragPayload: {
+            kind: "note",
+            noteId: note.id,
+            title: note.title.trim() || "Ghi chú không có tiêu đề",
+            content: note.content,
+            colorId: note.colorId,
+            updatedAt: note.updatedAt,
+          },
           onSelect: () => {
             setActiveNoteId(note.id);
             navigate("/notes");
@@ -2552,136 +2748,156 @@ export const TopBar: React.FC<TopBarProps> = ({
                     )}
 
                     {(showAllResults ? searchResults : searchResults.slice(0, 4)).map(
-                      (item, index) => (
-                        <motion.div
-                          key={`${item.id}-${searchQuery}-${index}`}
-                          layout
-                          initial={{ opacity: 0, y: 20, x: 0 }}
-                          animate={
-                            isClearingHistory && item.type === "history"
-                              ? {
-                                  opacity: 0,
-                                  x: -140,
-                                  transition: {
-                                    duration: 0.28,
-                                    delay: index * 0.045,
-                                    ease: [0.4, 0, 0.2, 1],
-                                  },
-                                }
-                              : {
-                                  opacity: 1,
-                                  y: 0,
-                                  x: 0,
-                                  transition: {
-                                    duration: 0.38,
-                                    delay: Math.min(index * 0.04, 0.2),
-                                    ease: [0.16, 1, 0.3, 1],
-                                  },
-                                }
-                          }
-                          onClick={() => !isClearingHistory && handleSelectSearchResult(item)}
-                          onMouseEnter={(e) => handleResultMouseEnter(item.title, e)}
-                          onMouseLeave={handleResultMouseLeave}
-                          title={item.title}
-                          className="w-full min-h-[50px] px-2.5 py-1.5 rounded-[8px] flex items-center gap-3 text-left text-[#111827] dark:text-white hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:bg-black/[0.1] dark:active:bg-white/[0.12] transition-none cursor-pointer group select-none"
-                        >
-                          {renderItemIcon(item)}
+                      (item, index) => {
+                        const rowDragPayload =
+                          item.dragPayload ||
+                          appAspects.find(
+                            (a) =>
+                              a.dragPayload && a.title.toLowerCase() === item.title.toLowerCase(),
+                          )?.dragPayload;
+                        return (
+                          <motion.div
+                            key={`${item.id}-${searchQuery}-${index}`}
+                            layout
+                            initial={{ opacity: 0, y: 20, x: 0 }}
+                            animate={
+                              isClearingHistory && item.type === "history"
+                                ? {
+                                    opacity: 0,
+                                    x: -140,
+                                    transition: {
+                                      duration: 0.28,
+                                      delay: index * 0.045,
+                                      ease: [0.4, 0, 0.2, 1],
+                                    },
+                                  }
+                                : {
+                                    opacity: 1,
+                                    y: 0,
+                                    x: 0,
+                                    transition: {
+                                      duration: 0.38,
+                                      delay: Math.min(index * 0.04, 0.2),
+                                      ease: [0.16, 1, 0.3, 1],
+                                    },
+                                  }
+                            }
+                            onClick={() => !isClearingHistory && handleSelectSearchResult(item)}
+                            onMouseEnter={(e) => handleResultMouseEnter(item.title, e)}
+                            onMouseLeave={handleResultMouseLeave}
+                            title={item.title}
+                            className="w-full min-h-[50px] px-2.5 py-1.5 rounded-[8px] text-left text-[#111827] dark:text-white hover:bg-black/[0.06] dark:hover:bg-white/[0.08] active:bg-black/[0.1] dark:active:bg-white/[0.12] transition-none cursor-pointer group select-none"
+                          >
+                            <div
+                              draggable={Boolean(rowDragPayload)}
+                              onDragStart={(e) => {
+                                if (!rowDragPayload) return;
+                                beginSparkleDrag(e, rowDragPayload);
+                              }}
+                              onDragEnd={() => clearSparkleDrag()}
+                              className="w-full flex items-center gap-3 min-w-0"
+                            >
+                              {renderItemIcon(item)}
 
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="search-result-title text-[13.5px] font-medium text-[#111827] dark:text-white/95 truncate leading-snug">
-                                  <FluentEmojiText>{item.title}</FluentEmojiText>
-                                </span>
-                                {item.type === "history" && item.timestamp && (
-                                  <span className="text-[11px] font-normal text-[#9ca3af] dark:text-[#9ca3af]/80 shrink-0 select-none">
-                                    • {formatRelativeTime(item.timestamp)}
-                                  </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="search-result-title text-[13.5px] font-medium text-[#111827] dark:text-white/95 truncate leading-snug">
+                                      <FluentEmojiText>{item.title}</FluentEmojiText>
+                                    </span>
+                                    {item.type === "history" && item.timestamp && (
+                                      <span className="text-[11px] font-normal text-[#9ca3af] dark:text-[#9ca3af]/80 shrink-0 select-none">
+                                        • {formatRelativeTime(item.timestamp)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {item.subtitle && (
+                                  <div className="text-[11.5px] font-normal text-[#6b7280] dark:text-[#9ca3af] truncate leading-tight mt-0.5">
+                                    <FluentEmojiText>{item.subtitle}</FluentEmojiText>
+                                  </div>
                                 )}
                               </div>
+
+                              {/* Action toggle switch right on search UI */}
+                              {item.type === "setting-toggle" &&
+                                (item.settingKey || item.customToggle) && (
+                                  <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={
+                                      item.customToggle
+                                        ? item.customToggle.checked
+                                        : Boolean(settings[item.settingKey!])
+                                    }
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (item.customToggle) {
+                                        item.customToggle.onToggle();
+                                      } else if (item.settingKey) {
+                                        const currentVal = Boolean(settings[item.settingKey]);
+                                        const nextVal = !currentVal;
+                                        updateSetting(item.settingKey, nextVal);
+                                        showAppToast(
+                                          nextVal
+                                            ? `Enable ${item.title}`
+                                            : `Disable ${item.title}`,
+                                          { source: "search" },
+                                        );
+                                      }
+                                    }}
+                                    className="toggle-switch-btn shrink-0"
+                                    title={
+                                      (
+                                        item.customToggle
+                                          ? item.customToggle.checked
+                                          : Boolean(settings[item.settingKey!])
+                                      )
+                                        ? "Turn off"
+                                        : "Turn on"
+                                    }
+                                  >
+                                    <span className="toggle-switch-thumb" />
+                                  </button>
+                                )}
+
+                              {/* Direct action button right on search UI */}
+                              {item.customAction && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    item.customAction!.onAction();
+                                  }}
+                                  className="px-2.5 py-1 rounded-[8px] bg-[#005fb8]/10 dark:bg-[#4cc2ff]/15 hover:bg-[#005fb8]/20 dark:hover:bg-[#4cc2ff]/25 text-[#005fb8] dark:text-[#4cc2ff] text-[12px] font-semibold shrink-0 transition-none cursor-pointer border border-[#005fb8]/20 dark:border-[#4cc2ff]/20"
+                                >
+                                  {item.customAction.label}
+                                </button>
+                              )}
+
+                              {item.type === "web-search" && (
+                                <span className="text-[11px] px-2 py-0.5 rounded-[4px] bg-[#005fb8]/10 dark:bg-[#4cc2ff]/15 text-[#005fb8] dark:text-[#4cc2ff] font-medium shrink-0">
+                                  Open tab
+                                </span>
+                              )}
+
+                              {item.type === "history" && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeFromHistory(item.title);
+                                  }}
+                                  aria-label="Remove from history"
+                                  className="opacity-0 group-hover:opacity-100 p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-[#6b7280] dark:text-[#9ca3af] hover:text-[#111827] dark:hover:text-white shrink-0 cursor-pointer transition-none"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                             </div>
-                            {item.subtitle && (
-                              <div className="text-[11.5px] font-normal text-[#6b7280] dark:text-[#9ca3af] truncate leading-tight mt-0.5">
-                                <FluentEmojiText>{item.subtitle}</FluentEmojiText>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Action toggle switch right on search UI */}
-                          {item.type === "setting-toggle" &&
-                            (item.settingKey || item.customToggle) && (
-                              <button
-                                type="button"
-                                role="switch"
-                                aria-checked={
-                                  item.customToggle
-                                    ? item.customToggle.checked
-                                    : Boolean(settings[item.settingKey!])
-                                }
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (item.customToggle) {
-                                    item.customToggle.onToggle();
-                                  } else if (item.settingKey) {
-                                    const currentVal = Boolean(settings[item.settingKey]);
-                                    const nextVal = !currentVal;
-                                    updateSetting(item.settingKey, nextVal);
-                                    showAppToast(
-                                      nextVal ? `Enable ${item.title}` : `Disable ${item.title}`,
-                                      { source: "search" },
-                                    );
-                                  }
-                                }}
-                                className="toggle-switch-btn shrink-0"
-                                title={
-                                  (
-                                    item.customToggle
-                                      ? item.customToggle.checked
-                                      : Boolean(settings[item.settingKey!])
-                                  )
-                                    ? "Turn off"
-                                    : "Turn on"
-                                }
-                              >
-                                <span className="toggle-switch-thumb" />
-                              </button>
-                            )}
-
-                          {/* Direct action button right on search UI */}
-                          {item.customAction && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                item.customAction!.onAction();
-                              }}
-                              className="px-2.5 py-1 rounded-[8px] bg-[#005fb8]/10 dark:bg-[#4cc2ff]/15 hover:bg-[#005fb8]/20 dark:hover:bg-[#4cc2ff]/25 text-[#005fb8] dark:text-[#4cc2ff] text-[12px] font-semibold shrink-0 transition-none cursor-pointer border border-[#005fb8]/20 dark:border-[#4cc2ff]/20"
-                            >
-                              {item.customAction.label}
-                            </button>
-                          )}
-
-                          {item.type === "web-search" && (
-                            <span className="text-[11px] px-2 py-0.5 rounded-[4px] bg-[#005fb8]/10 dark:bg-[#4cc2ff]/15 text-[#005fb8] dark:text-[#4cc2ff] font-medium shrink-0">
-                              Open tab
-                            </span>
-                          )}
-
-                          {item.type === "history" && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeFromHistory(item.title);
-                              }}
-                              aria-label="Remove from history"
-                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-[#6b7280] dark:text-[#9ca3af] hover:text-[#111827] dark:hover:text-white shrink-0 cursor-pointer transition-none"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </motion.div>
-                      ),
+                          </motion.div>
+                        );
+                      },
                     )}
 
                     {/* Recent Searches Footer: Show more button and Clear all button without hover/pressed transforms */}

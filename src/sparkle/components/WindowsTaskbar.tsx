@@ -100,6 +100,13 @@ import {
   taskbarPinId,
 } from "../services/pinStore";
 import { WindowsWidgetsBoard, CITY_WEATHER_DATA, loadWidgetsPrefs } from "./WindowsWidgetsBoard";
+import { beginSparkleDrag, clearSparkleDrag, type SparkleDragPayload } from "../utils/sparkleDrag";
+import { readCustomFsEntries, type SharedExplorerEntry } from "../utils/deviceFileImport";
+import {
+  installedWinUIStartAppId,
+  useInstalledWinUIApps,
+} from "../services/installedWinUIAppsStore";
+import { addSparkleDragToDesktop } from "../services/desktopStore";
 
 interface TaskbarWeatherIconProps {
   temp?: number;
@@ -516,6 +523,7 @@ interface SearchAspectItem {
     onAction: () => void;
   };
   externalUrl?: string;
+  dragPayload?: SparkleDragPayload;
   onSelect: () => void;
 }
 
@@ -786,10 +794,27 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
   const [showAllResults, setShowAllResults] = useState(false);
   const [isClearingHistory, setIsClearingHistory] = useState(false);
   const [galleryItems, setGalleryItems] = useState<GalleryMediaItem[]>([]);
+  const [explorerCustomEntries, setExplorerCustomEntries] = useState<SharedExplorerEntry[]>(() =>
+    readCustomFsEntries(),
+  );
+  const installedWinUIApps = useInstalledWinUIApps();
   const galleryDirtyRef = useRef(true);
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const searchFlyoutRef = useRef<HTMLDivElement>(null);
   const searchFlyoutInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const syncFs = () => setExplorerCustomEntries(readCustomFsEntries());
+    const closeOnDesktopDrop = () => setIsSearchOpen(false);
+    window.addEventListener("sparkle:file-explorer-fs-updated", syncFs);
+    window.addEventListener("storage", syncFs);
+    window.addEventListener("sparkle:desktop-drop-complete", closeOnDesktopDrop);
+    return () => {
+      window.removeEventListener("sparkle:file-explorer-fs-updated", syncFs);
+      window.removeEventListener("storage", syncFs);
+      window.removeEventListener("sparkle:desktop-drop-complete", closeOnDesktopDrop);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = galleryDB.subscribe(() => {
@@ -1319,6 +1344,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-home",
         keywords: "trang chủ home overview",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-home", title: "Home", route: "/" },
         onSelect: () => onLaunchRoute("/"),
       },
       {
@@ -1328,6 +1354,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-watch",
         keywords: "live tv xem truyền hình trực tuyến watch",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-watch", title: "Watch", route: "/live-tv" },
         onSelect: () => onLaunchRoute("/live-tv"),
       },
       {
@@ -1337,6 +1364,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-feed",
         keywords: "tin tức bài viết news articles feed update blogs changelog cập nhật",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-feed", title: "Feed", route: "/news" },
         onSelect: () => onLaunchRoute("/news"),
       },
       {
@@ -1346,6 +1374,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-channels",
         keywords: "danh sách kênh channels channel directory",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-channels", title: "Channels", route: "/channels" },
         onSelect: () => onLaunchRoute("/channels"),
       },
       {
@@ -1355,6 +1384,12 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-favorites",
         keywords: "kênh yêu thích favorites favs",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-favorites",
+          title: "Favorites",
+          route: "/favorites",
+        },
         onSelect: () => onLaunchRoute("/favorites"),
       },
       {
@@ -1364,6 +1399,12 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-craftmine",
         keywords: "minecraft preview web game",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-craftmine",
+          title: "Craftmine",
+          route: "/craftmine",
+        },
         onSelect: () => onLaunchRoute("/craftmine"),
       },
       {
@@ -1373,6 +1414,12 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-photopea",
         keywords: "photopea photoshop chỉnh sửa ảnh biên tập ảnh psd photo editor web app",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-photopea",
+          title: "Photopea",
+          route: "/photopea",
+        },
         onSelect: () => onLaunchRoute("/photopea"),
       },
       {
@@ -1382,6 +1429,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-gallery",
         keywords: "gallery bộ sưu tập ảnh video âm thanh phương tiện media photos",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-gallery", title: "Gallery", route: "/gallery" },
         onSelect: () => onLaunchRoute("/gallery"),
       },
       {
@@ -1391,6 +1439,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-draws",
         keywords: "ink canvas draws paint vẽ hội họa bút cọ sketch ms paint canvas",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-draws", title: "Ink Canvas", route: "/draws" },
         onSelect: () => onLaunchRoute("/draws"),
       },
       {
@@ -1400,6 +1449,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-notes",
         keywords: "ghi chú soạn thảo notes office",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-notes", title: "Notes", route: "/notes" },
         onSelect: () => onLaunchRoute("/notes"),
       },
       {
@@ -1410,6 +1460,12 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         keywords:
           "screenbox screenbug vlc media player phát video âm thanh stream disc network equalizer open url",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-screenbox",
+          title: "Screenbox",
+          route: "/screenbox",
+        },
         onSelect: () => onLaunchRoute("/screenbox"),
       },
       {
@@ -1419,6 +1475,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-camera",
         keywords: "camera máy ảnh chụp ảnh camera rolls webcam snapshot photo insider",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-camera", title: "Camera", route: "/camera" },
         onSelect: () => onLaunchRoute("/camera"),
       },
       {
@@ -1428,6 +1485,12 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-calculator",
         keywords: "calculator calc máy tính standard scientific math tính toán",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-calculator",
+          title: "Calculator",
+          route: "/calculator",
+        },
         onSelect: () => onLaunchRoute("/calculator"),
       },
       {
@@ -1437,6 +1500,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-weather",
         keywords: "weather forecast thời tiết dự báo nhiệt độ mưa gió fluentweather",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-weather", title: "Weather", route: "/weather" },
         onSelect: () => onLaunchRoute("/weather"),
       },
       {
@@ -1447,6 +1511,12 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         keywords:
           "file explorer files folders drives documents downloads pictures explorer tep tin thu muc",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-file-explorer",
+          title: "File Explorer",
+          route: "/file-explorer",
+        },
         onSelect: () => onLaunchRoute("/file-explorer"),
       },
       {
@@ -1456,6 +1526,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-notepad",
         keywords: "notepad text editor markdown plain text ghi chu winui 3",
         type: "page",
+        dragPayload: { kind: "app", appId: "app-notepad", title: "Notepad", route: "/notepad" },
         onSelect: () => onLaunchRoute("/notepad"),
       },
       {
@@ -1465,7 +1536,43 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-html-writer",
         keywords: "html writer code editor css js preview winui 3 viet chay html",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-html-writer",
+          title: "HTML Writer",
+          route: "/html-writer",
+        },
         onSelect: () => onLaunchRoute("/html-writer"),
+      },
+      {
+        id: "page-winui-framework",
+        title: "WinUI Framework",
+        subtitle: "Open",
+        startAppId: "app-winui-framework",
+        keywords: "winui framework sdk studio write build app xaml visual editor",
+        type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-winui-framework",
+          title: "WinUI Framework",
+          route: "/winui-framework",
+        },
+        onSelect: () => onLaunchRoute("/winui-framework"),
+      },
+      {
+        id: "page-registry-editor",
+        title: "Registry Editor",
+        subtitle: "Open",
+        startAppId: "app-registry-editor",
+        keywords: "registry editor regedit windows hkey hkcu hklm winui 3",
+        type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-registry-editor",
+          title: "Registry Editor",
+          route: "/registry-editor",
+        },
+        onSelect: () => onLaunchRoute("/registry-editor"),
       },
       {
         id: "page-pc-settings",
@@ -1474,6 +1581,12 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-pc-settings",
         keywords: "pc settings windows 11 system bluetooth network personalization windows update",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-pc-settings",
+          title: "PC Settings",
+          route: "/pc-settings",
+        },
         onSelect: () => onLaunchRoute("/pc-settings"),
       },
       {
@@ -1483,6 +1596,12 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         startAppId: "app-settings",
         keywords: "cài đặt hệ thống settings preferences",
         type: "page",
+        dragPayload: {
+          kind: "app",
+          appId: "app-settings",
+          title: "Settings",
+          route: "/settings",
+        },
         onSelect: () => onLaunchRoute("/settings"),
       },
       {
@@ -1623,6 +1742,74 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
       },
     ];
 
+    (installedWinUIApps || []).forEach((wApp) => {
+      const appId = installedWinUIStartAppId(wApp.id);
+      aspects.push({
+        id: `winui-app-${wApp.id}`,
+        title: wApp.name,
+        subtitle: "Open",
+        startAppId: appId,
+        keywords: `winui app custom ${wApp.description || ""}`,
+        type: "page",
+        dragPayload: {
+          kind: "app",
+          appId,
+          title: wApp.name,
+          route: wApp.route,
+          iconKey: wApp.iconKey,
+          accentColor: wApp.accentColor,
+        },
+        onSelect: () => onLaunchRoute(wApp.route),
+      });
+    });
+
+    [
+      { id: "dir-desktop", title: "Desktop", keywords: "desktop folder thu muc man hinh" },
+      { id: "dir-documents", title: "Documents", keywords: "documents folder tai lieu" },
+      { id: "dir-downloads", title: "Downloads", keywords: "downloads folder tai xuong" },
+      { id: "dir-pictures", title: "Pictures", keywords: "pictures folder hinh anh" },
+      { id: "dir-music", title: "Music", keywords: "music folder am nhac" },
+      { id: "dir-videos", title: "Videos", keywords: "videos folder video" },
+      {
+        id: "dir-imported",
+        title: "Imported from device",
+        keywords: "imported device folder import",
+      },
+    ].forEach((dir) => {
+      aspects.push({
+        id: `explorer-${dir.id}`,
+        title: dir.title,
+        subtitle: "File Explorer Folder",
+        startAppId: "app-file-explorer",
+        keywords: `folder explorer ${dir.keywords}`,
+        type: "page",
+        dragPayload: {
+          kind: "directory",
+          dirId: dir.id,
+          title: dir.title,
+          route: "/file-explorer",
+        },
+        onSelect: () => onLaunchRoute("/file-explorer", { initialDirId: dir.id }),
+      });
+    });
+
+    (explorerCustomEntries || []).forEach((entry) => {
+      aspects.push({
+        id: `fs-entry-${entry.id}`,
+        title: entry.name,
+        subtitle: entry.type === "folder" ? "File Explorer Folder" : "File",
+        startAppId: "app-file-explorer",
+        keywords: `file folder explorer ${entry.ext || ""} ${entry.name}`,
+        type: "page",
+        dragPayload: { kind: "explorer-entry", entry },
+        onSelect: () =>
+          onLaunchRoute("/file-explorer", {
+            initialDirId: entry.type === "folder" ? entry.id : entry.parentId,
+            selectEntryId: entry.id,
+          }),
+      });
+    });
+
     (channels || []).forEach((ch) => {
       aspects.push({
         id: `channel-${ch.id}`,
@@ -1631,6 +1818,13 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         keywords: `${ch.category} ${ch.shortName || ""} ${ch.slug}`,
         type: "channel",
         logo: ch.logo,
+        dragPayload: {
+          kind: "channel",
+          channelId: ch.id,
+          slug: ch.slug,
+          title: ch.shortName || ch.name,
+          logo: ch.logo,
+        },
         onSelect: () => {
           onSelectChannel(ch);
           onLaunchRoute(`/live-tv?channel=${ch.slug}`);
@@ -1657,6 +1851,14 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         subtitle: `Note • ${formatRelativeTime(note.updatedAt)}`,
         keywords: `note notes ghi chú notion apple notes ${plainText}`,
         type: "note",
+        dragPayload: {
+          kind: "note",
+          noteId: note.id,
+          title: note.title.trim() || "Ghi chú không có tiêu đề",
+          content: note.content,
+          colorId: note.colorId,
+          updatedAt: note.updatedAt,
+        },
         customAction: {
           label: "Mở",
           onAction: () => {
@@ -1689,6 +1891,17 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
         keywords: `gallery ${media.type} ${media.tags ? media.tags.join(" ") : ""} ${media.description || ""}`,
         type: "gallery",
         logo: media.thumbnailUrl || (media.type === "image" ? media.url : undefined),
+        dragPayload: {
+          kind: "gallery-item",
+          itemId: media.id,
+          title: media.title,
+          mediaType: media.type,
+          url: media.url,
+          thumbnailUrl: media.thumbnailUrl,
+          size: media.size,
+          mimeType: media.mimeType,
+          createdAt: media.createdAt,
+        },
         customAction: {
           label: "Xem",
           onAction: () => {
@@ -1717,6 +1930,8 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
     notes,
     galleryItems,
     setActiveNoteId,
+    installedWinUIApps,
+    explorerCustomEntries,
   ]);
 
   // Trending searches shown when input is empty & history is empty (matching TopBar.tsx)
@@ -2753,9 +2968,35 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
                                     ? "w-5 h-5 [&_img]:!w-[88%] [&_img]:!h-[88%] [&_svg]:!w-[88%] [&_svg]:!h-[88%]"
                                     : "w-5 h-5";
 
+                                const dragPayload: SparkleDragPayload | undefined =
+                                  item.dragPayload ||
+                                  appAspects.find(
+                                    (a) =>
+                                      a.dragPayload &&
+                                      (a.title.toLowerCase() === item.title.toLowerCase() ||
+                                        (item.startAppId && a.startAppId === item.startAppId)),
+                                  )?.dragPayload ||
+                                  (matchedAspectAppId
+                                    ? {
+                                        kind: "app",
+                                        appId: matchedAspectAppId,
+                                        title: item.title,
+                                        route:
+                                          findStartAppForRoute(
+                                            `/${matchedAspectAppId.replace("app-", "")}`,
+                                          )?.route || "/",
+                                      }
+                                    : undefined);
+
                                 return (
                                   <div
                                     key={`${item.id}-${searchQuery}-${index}`}
+                                    draggable={Boolean(dragPayload)}
+                                    onDragStart={(e) => {
+                                      if (!dragPayload) return;
+                                      beginSparkleDrag(e, dragPayload);
+                                    }}
+                                    onDragEnd={() => clearSparkleDrag()}
                                     onClick={() =>
                                       !isClearingHistory && handleSelectSearchResult(item)
                                     }
@@ -3224,8 +3465,17 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
                           }
                         }}
                         onDragStart={(e) => {
-                          e.dataTransfer.effectAllowed = "move";
                           e.dataTransfer.setData("text/plain", slot.key);
+                          beginSparkleDrag(
+                            e as any,
+                            {
+                              kind: "app",
+                              appId: findStartAppForRoute(pinned.route)?.id || pinned.id,
+                              title: pinned.title,
+                              route: pinned.route,
+                            },
+                            { preserveTextPlain: true, effectAllowed: "copyMove" },
+                          );
                           setHoverTooltip(null);
                           setDraggedSlotKey(slot.key);
                         }}
@@ -3258,6 +3508,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
                         onDragEnd={() => {
                           setDraggedSlotKey(null);
                           setTaskbarDropTarget(null);
+                          clearSparkleDrag();
                         }}
                         onContextMenu={(e) => {
                           e.preventDefault();
@@ -3368,8 +3619,17 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
                           }
                         }}
                         onDragStart={(e) => {
-                          e.dataTransfer.effectAllowed = "move";
                           e.dataTransfer.setData("text/plain", slot.key);
+                          beginSparkleDrag(
+                            e as any,
+                            {
+                              kind: "app",
+                              appId: findStartAppForRoute(pinned.route)?.id || pinned.id,
+                              title: pinned.title,
+                              route: pinned.route,
+                            },
+                            { preserveTextPlain: true, effectAllowed: "copyMove" },
+                          );
                           setHoverTooltip(null);
                           setDraggedSlotKey(slot.key);
                         }}
@@ -3402,6 +3662,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
                         onDragEnd={() => {
                           setDraggedSlotKey(null);
                           setTaskbarDropTarget(null);
+                          clearSparkleDrag();
                         }}
                         onContextMenu={(e) => {
                           e.preventDefault();
@@ -3525,8 +3786,17 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
                       }
                     }}
                     onDragStart={(e) => {
-                      e.dataTransfer.effectAllowed = "move";
                       e.dataTransfer.setData("text/plain", slot.key);
+                      beginSparkleDrag(
+                        e as any,
+                        {
+                          kind: "app",
+                          appId: findStartAppForRoute(tab.route)?.id || `task-${tab.id}`,
+                          title: tab.title,
+                          route: tab.route,
+                        },
+                        { preserveTextPlain: true, effectAllowed: "copyMove" },
+                      );
                       setHoverTooltip(null);
                       setDraggedSlotKey(slot.key);
                     }}
@@ -3559,6 +3829,7 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
                     onDragEnd={() => {
                       setDraggedSlotKey(null);
                       setTaskbarDropTarget(null);
+                      clearSparkleDrag();
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -4624,6 +4895,29 @@ export const WindowsTaskbar: React.FC<WindowsTaskbarProps> = ({
                               <Pin className="w-3.5 h-3.5" />
                             )}
                             <span>{onTaskbar ? "Unpin from taskbar" : "Pin to taskbar"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              const res = addSparkleDragToDesktop({
+                                kind: "app",
+                                appId: startApp?.id || `app-${canonicalPinRoute(taskMenu.route)}`,
+                                title: startApp?.title || taskMenu.title,
+                                route: startApp?.route || taskMenu.route,
+                              });
+                              showAppToast(
+                                res.alreadyExists
+                                  ? `"${res.label}" is already on Desktop`
+                                  : `Added "${res.label}" to Desktop`,
+                                { source: "taskbar" },
+                              );
+                              setTaskMenu(null);
+                            }}
+                            className={itemClass}
+                          >
+                            <Monitor className="w-3.5 h-3.5" />
+                            <span>Add to Desktop</span>
                           </button>
                         </>
                       );

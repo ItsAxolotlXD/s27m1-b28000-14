@@ -70,6 +70,7 @@ import {
   useAppPreferences,
 } from "../services/appPreferences";
 import { WindowTitleBarPortalContext } from "../components/WindowFrame";
+import { beginSparkleDrag, clearSparkleDrag } from "../utils/sparkleDrag";
 
 export const WINDOWS_11_FOLDER_ICON =
   "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/Windows_11_FOLDER.svg/1280px-Windows_11_FOLDER.svg.png?utm_source=commons.wikimedia.org&utm_campaign=index&utm_content=thumbnail";
@@ -1834,66 +1835,86 @@ export const Gallery: React.FC<GalleryProps> = ({ navigate, searchQuery = "", ro
                                       onTouchMove={clearLongPress}
                                       onTouchEnd={clearLongPress}
                                       onTouchCancel={clearLongPress}
-                                      className={`gallery-file-card gallery-media-card group relative flex flex-row items-center gap-3 p-2.5 sm:p-3 rounded-[8px] sm:rounded-[10px] bg-black/[0.02] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] cursor-pointer shadow-xs hover:shadow-md transition-all select-none border ${
+                                      className={`gallery-file-card gallery-media-card group relative rounded-[8px] sm:rounded-[10px] bg-black/[0.02] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.08] cursor-pointer shadow-xs hover:shadow-md transition-all select-none border ${
                                         isSelected
                                           ? "ring-2 ring-[#005fb8] dark:ring-[#4cc2ff] border-transparent"
                                           : "border-black/10 dark:border-white/10"
                                       }`}
                                     >
-                                      {/* Icon on left - no background, matching recommended section */}
-                                      <div className="w-10 h-10 flex items-center justify-center shrink-0 bg-transparent">
-                                        <img
-                                          src={getGalleryFileIconSrc(item).src}
-                                          alt={getGalleryFileIconSrc(item).alt}
-                                          referrerPolicy="no-referrer"
-                                          loading="lazy"
-                                          className="w-8 h-8 object-contain filter drop-shadow-xs"
-                                        />
-                                      </div>
-
-                                      {/* Title & Metadata in center */}
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-[13px] font-semibold truncate text-[#111827] dark:text-white group-hover:text-[#005fb8] dark:group-hover:text-[#4cc2ff] transition-colors">
-                                          {item.title}
-                                        </p>
-                                        <p className="text-[11px] text-[#6b7280] dark:text-[#9ca3af] mt-0.5 flex items-center gap-1.5">
-                                          <span>
-                                            {item.type === "audio"
-                                              ? "Audio file"
-                                              : docInfo?.brand || "Document"}
-                                          </span>
-                                          <span>•</span>
-                                          <span>
-                                            {item.size
-                                              ? `${(item.size / 1024).toFixed(0)} KB`
-                                              : item.dateLabel || "File"}
-                                          </span>
-                                        </p>
-                                      </div>
-
-                                      {/* Checkbox indicator */}
                                       <div
-                                        className={`shrink-0 transition-opacity ${
-                                          isSelectMode
-                                            ? "opacity-100"
-                                            : "opacity-0 group-hover:opacity-100"
-                                        }`}
-                                        onClick={(e) => {
+                                        draggable
+                                        onDragStart={(e) => {
                                           e.stopPropagation();
-                                          if (!isSelectMode) setIsSelectMode(true);
-                                          toggleSelect(item.id, e);
+                                          beginSparkleDrag(e, {
+                                            kind: "gallery-item",
+                                            itemId: item.id,
+                                            title: item.title,
+                                            mediaType: item.type,
+                                            url: item.url,
+                                            thumbnailUrl: item.thumbnailUrl,
+                                            size: item.size,
+                                            mimeType: item.mimeType,
+                                            createdAt: item.createdAt,
+                                          });
                                         }}
+                                        onDragEnd={() => clearSparkleDrag()}
+                                        className="flex flex-row items-center gap-3 p-2.5 sm:p-3 w-full"
                                       >
+                                        {/* Icon on left - no background, matching recommended section */}
+                                        <div className="w-10 h-10 flex items-center justify-center shrink-0 bg-transparent">
+                                          <img
+                                            src={getGalleryFileIconSrc(item).src}
+                                            alt={getGalleryFileIconSrc(item).alt}
+                                            referrerPolicy="no-referrer"
+                                            loading="lazy"
+                                            className="w-8 h-8 object-contain filter drop-shadow-xs"
+                                          />
+                                        </div>
+
+                                        {/* Title & Metadata in center */}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-[13px] font-semibold truncate text-[#111827] dark:text-white group-hover:text-[#005fb8] dark:group-hover:text-[#4cc2ff] transition-colors">
+                                            {item.title}
+                                          </p>
+                                          <p className="text-[11px] text-[#6b7280] dark:text-[#9ca3af] mt-0.5 flex items-center gap-1.5">
+                                            <span>
+                                              {item.type === "audio"
+                                                ? "Audio file"
+                                                : docInfo?.brand || "Document"}
+                                            </span>
+                                            <span>•</span>
+                                            <span>
+                                              {item.size
+                                                ? `${(item.size / 1024).toFixed(0)} KB`
+                                                : item.dateLabel || "File"}
+                                            </span>
+                                          </p>
+                                        </div>
+
+                                        {/* Checkbox indicator */}
                                         <div
-                                          className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                                            isSelected
-                                              ? "bg-[#005fb8] dark:bg-[#4cc2ff] text-white dark:text-black shadow-md ring-2 ring-white dark:ring-black"
-                                              : "bg-black/20 dark:bg-white/20 hover:bg-black/40 text-white border border-black/20 dark:border-white/30"
+                                          className={`shrink-0 transition-opacity ${
+                                            isSelectMode
+                                              ? "opacity-100"
+                                              : "opacity-0 group-hover:opacity-100"
                                           }`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isSelectMode) setIsSelectMode(true);
+                                            toggleSelect(item.id, e);
+                                          }}
                                         >
-                                          {isSelected && (
-                                            <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                          )}
+                                          <div
+                                            className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                                              isSelected
+                                                ? "bg-[#005fb8] dark:bg-[#4cc2ff] text-white dark:text-black shadow-md ring-2 ring-white dark:ring-black"
+                                                : "bg-black/20 dark:bg-white/20 hover:bg-black/40 text-white border border-black/20 dark:border-white/30"
+                                            }`}
+                                          >
+                                            {isSelected && (
+                                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
                                     </motion.div>
@@ -1952,35 +1973,86 @@ export const Gallery: React.FC<GalleryProps> = ({ navigate, searchQuery = "", ro
                                       }`}
                                       style={{ aspectRatio: `${ratio}` }}
                                     >
-                                      {/* Checkbox indicator */}
                                       <div
-                                        className={`absolute top-2 left-2 z-20 transition-opacity ${
-                                          isSelectMode
-                                            ? "opacity-100"
-                                            : "opacity-0 group-hover:opacity-100"
-                                        }`}
-                                        onClick={(e) => {
+                                        draggable
+                                        onDragStart={(e) => {
                                           e.stopPropagation();
-                                          if (!isSelectMode) setIsSelectMode(true);
-                                          toggleSelect(item.id, e);
+                                          beginSparkleDrag(e, {
+                                            kind: "gallery-item",
+                                            itemId: item.id,
+                                            title: item.title,
+                                            mediaType: item.type,
+                                            url: item.url,
+                                            thumbnailUrl: item.thumbnailUrl,
+                                            size: item.size,
+                                            mimeType: item.mimeType,
+                                            createdAt: item.createdAt,
+                                          });
                                         }}
+                                        onDragEnd={() => clearSparkleDrag()}
+                                        className="relative w-full h-full"
                                       >
+                                        {/* Checkbox indicator */}
                                         <div
-                                          className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                                            isSelected
-                                              ? "bg-[#005fb8] dark:bg-[#4cc2ff] text-white dark:text-black shadow-md ring-2 ring-white dark:ring-black"
-                                              : "bg-black/40 hover:bg-black/60 text-white border border-white/60 backdrop-blur-sm"
+                                          className={`absolute top-2 left-2 z-20 transition-opacity ${
+                                            isSelectMode
+                                              ? "opacity-100"
+                                              : "opacity-0 group-hover:opacity-100"
                                           }`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!isSelectMode) setIsSelectMode(true);
+                                            toggleSelect(item.id, e);
+                                          }}
                                         >
-                                          {isSelected ? (
-                                            <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                          ) : null}
+                                          <div
+                                            className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                                              isSelected
+                                                ? "bg-[#005fb8] dark:bg-[#4cc2ff] text-white dark:text-black shadow-md ring-2 ring-white dark:ring-black"
+                                                : "bg-black/40 hover:bg-black/60 text-white border border-white/60 backdrop-blur-sm"
+                                            }`}
+                                          >
+                                            {isSelected ? (
+                                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                            ) : null}
+                                          </div>
                                         </div>
-                                      </div>
 
-                                      {/* Media Thumbnail / Preview displaying according to resolution */}
-                                      {item.type === "video" ? (
-                                        <div className="relative w-full h-full bg-black">
+                                        {/* Media Thumbnail / Preview displaying according to resolution */}
+                                        {item.type === "video" ? (
+                                          <div className="relative w-full h-full bg-black">
+                                            <img
+                                              src={item.thumbnailUrl || item.url}
+                                              alt={item.title}
+                                              className="w-full h-full object-cover"
+                                              loading="lazy"
+                                              onLoad={(e) => {
+                                                const nw = e.currentTarget.naturalWidth;
+                                                const nh = e.currentTarget.naturalHeight;
+                                                if (nw && nh && nh > 0) {
+                                                  const cardEl = e.currentTarget.closest(
+                                                    ".gallery-media-card",
+                                                  ) as HTMLElement | null;
+                                                  if (cardEl) {
+                                                    cardEl.style.aspectRatio = `${nw / nh}`;
+                                                  }
+                                                }
+                                              }}
+                                            />
+                                            <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <div className="w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md shadow-lg">
+                                                <Play className="w-5 h-5 fill-current ml-0.5" />
+                                              </div>
+                                            </div>
+                                            {galleryPrefs.showTypeBadges && (
+                                              <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-[4px] bg-black/70 backdrop-blur-md text-[10px] font-semibold text-white">
+                                                {item.duration
+                                                  ? `${Math.floor(item.duration / 60)}:${String(item.duration % 60).padStart(2, "0")}`
+                                                  : "0:45"}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ) : (
                                           <img
                                             src={item.thumbnailUrl || item.url}
                                             alt={item.title}
@@ -1999,93 +2071,62 @@ export const Gallery: React.FC<GalleryProps> = ({ navigate, searchQuery = "", ro
                                               }
                                             }}
                                           />
-                                          <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <div className="w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md shadow-lg">
-                                              <Play className="w-5 h-5 fill-current ml-0.5" />
-                                            </div>
-                                          </div>
-                                          {galleryPrefs.showTypeBadges && (
-                                            <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-[4px] bg-black/70 backdrop-blur-md text-[10px] font-semibold text-white">
-                                              {item.duration
-                                                ? `${Math.floor(item.duration / 60)}:${String(item.duration % 60).padStart(2, "0")}`
-                                                : "0:45"}
-                                            </div>
-                                          )}
-                                        </div>
-                                      ) : (
-                                        <img
-                                          src={item.thumbnailUrl || item.url}
-                                          alt={item.title}
-                                          className="w-full h-full object-cover"
-                                          loading="lazy"
-                                          onLoad={(e) => {
-                                            const nw = e.currentTarget.naturalWidth;
-                                            const nh = e.currentTarget.naturalHeight;
-                                            if (nw && nh && nh > 0) {
-                                              const cardEl = e.currentTarget.closest(
-                                                ".gallery-media-card",
-                                              ) as HTMLElement | null;
-                                              if (cardEl) {
-                                                cardEl.style.aspectRatio = `${nw / nh}`;
-                                              }
-                                            }
-                                          }}
-                                        />
-                                      )}
+                                        )}
 
-                                      {/* Top-Right Favorite / Action icons */}
-                                      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleToggleFavorite(item);
-                                          }}
-                                          className={`p-1 rounded-full backdrop-blur-md transition-all cursor-pointer ${
-                                            item.isFavorite
-                                              ? `bg-amber-400 text-black shadow-md ${
-                                                  galleryPrefs.showFavoriteBadge
-                                                    ? "opacity-100"
-                                                    : "opacity-0 group-hover:opacity-100"
-                                                }`
-                                              : "bg-black/50 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 hover:bg-black/70"
-                                          }`}
-                                          title={
-                                            item.isFavorite
-                                              ? "Remove from favorites"
-                                              : "Add to favorites"
-                                          }
-                                        >
-                                          <Heart
-                                            className={`w-3.5 h-3.5 ${item.isFavorite ? "fill-current" : ""}`}
-                                          />
-                                        </button>
-
-                                        {!isSelectMode && (
+                                        {/* Top-Right Favorite / Action icons */}
+                                        <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
                                           <button
                                             type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleDeleteItem(item);
+                                              handleToggleFavorite(item);
                                             }}
-                                            className="p-1 rounded-full bg-black/50 hover:bg-rose-600 text-white/80 hover:text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-md"
-                                            title="Delete item"
+                                            className={`p-1 rounded-full backdrop-blur-md transition-all cursor-pointer ${
+                                              item.isFavorite
+                                                ? `bg-amber-400 text-black shadow-md ${
+                                                    galleryPrefs.showFavoriteBadge
+                                                      ? "opacity-100"
+                                                      : "opacity-0 group-hover:opacity-100"
+                                                  }`
+                                                : "bg-black/50 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 hover:bg-black/70"
+                                            }`}
+                                            title={
+                                              item.isFavorite
+                                                ? "Remove from favorites"
+                                                : "Add to favorites"
+                                            }
                                           >
-                                            <FluentDeleteIcon className="w-3.5 h-3.5" />
+                                            <Heart
+                                              className={`w-3.5 h-3.5 ${item.isFavorite ? "fill-current" : ""}`}
+                                            />
                                           </button>
-                                        )}
-                                      </div>
 
-                                      {/* Subtle bottom gradient info overlay */}
-                                      <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between text-white pointer-events-none">
-                                        <span className="text-[11px] font-medium truncate max-w-[85%]">
-                                          {item.title}
-                                        </span>
-                                        {galleryPrefs.showTypeBadges && item.dimensions && (
-                                          <span className="text-[9px] text-neutral-300 font-mono">
-                                            {item.dimensions.width}×{item.dimensions.height}
+                                          {!isSelectMode && (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteItem(item);
+                                              }}
+                                              className="p-1 rounded-full bg-black/50 hover:bg-rose-600 text-white/80 hover:text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-md"
+                                              title="Delete item"
+                                            >
+                                              <FluentDeleteIcon className="w-3.5 h-3.5" />
+                                            </button>
+                                          )}
+                                        </div>
+
+                                        {/* Subtle bottom gradient info overlay */}
+                                        <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between text-white pointer-events-none">
+                                          <span className="text-[11px] font-medium truncate max-w-[85%]">
+                                            {item.title}
                                           </span>
-                                        )}
+                                          {galleryPrefs.showTypeBadges && item.dimensions && (
+                                            <span className="text-[9px] text-neutral-300 font-mono">
+                                              {item.dimensions.width}×{item.dimensions.height}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                     </motion.div>
                                   );

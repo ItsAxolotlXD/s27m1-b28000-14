@@ -62,6 +62,7 @@ import {
 } from "../services/installedWinUIAppsStore";
 import { pinActions } from "../services/pinStore";
 import { showAppToast } from "../utils/toast";
+import { beginSparkleDrag, clearSparkleDrag } from "../utils/sparkleDrag";
 import {
   DEFAULT_VISUAL_CANVAS,
   WINUI_CONTROL_DOCS,
@@ -1094,7 +1095,20 @@ export const WinUIFramework: React.FC<WinUIFrameworkProps> = ({ navigate, routeS
                     {installedApps.map((app) => (
                       <div
                         key={app.id}
-                        className="rounded-[8px] border border-black/[0.08] dark:border-white/[0.08] bg-white/85 dark:bg-[#2c3037]/85 p-4 flex flex-col justify-between gap-3"
+                        draggable
+                        onDragStart={(e) =>
+                          beginSparkleDrag(e, {
+                            kind: "app",
+                            id: installedWinUIStartAppId(app.id),
+                            label: app.name,
+                            route: app.route,
+                            startAppId: installedWinUIStartAppId(app.id),
+                            iconKey: app.iconKey,
+                            accentColor: app.accentColor,
+                          })
+                        }
+                        onDragEnd={() => clearSparkleDrag()}
+                        className="rounded-[8px] border border-black/[0.08] dark:border-white/[0.08] bg-white/85 dark:bg-[#2c3037]/85 p-4 flex flex-col justify-between gap-3 cursor-grab active:cursor-grabbing"
                       >
                         <div className="flex items-start gap-3">
                           <InstalledWinUIAppBadge
@@ -1173,7 +1187,17 @@ export const WinUIFramework: React.FC<WinUIFrameworkProps> = ({ navigate, routeS
                     return (
                       <div
                         key={proj.id}
-                        className={`rounded-[8px] border p-4 bg-white/85 dark:bg-[#2c3037]/85 flex flex-col justify-between gap-3 ${
+                        draggable
+                        onDragStart={(e) =>
+                          beginSparkleDrag(e, {
+                            kind: "winui-project",
+                            projectId: proj.id,
+                            name: proj.name,
+                            description: proj.description,
+                          })
+                        }
+                        onDragEnd={() => clearSparkleDrag()}
+                        className={`rounded-[8px] border p-4 bg-white/85 dark:bg-[#2c3037]/85 flex flex-col justify-between gap-3 cursor-grab active:cursor-grabbing ${
                           isCurrent
                             ? "border-[#0067b8]/50 dark:border-[#4cc2ff]/50"
                             : "border-black/[0.08] dark:border-white/[0.08]"
